@@ -1,0 +1,82 @@
+{
+  "name": "paper2corecode",
+  "version": "0.1.0",
+  "description": "Desktop app to analyze papers and extract core code with DeepSeek",
+  "author": "lemonmindyes",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lemonmindyes/paper2corecode.git"
+  },
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev:renderer\" \"npm run dev:electron\"",
+    "dev:renderer": "vite",
+    "dev:electron": "wait-on http://localhost:5173 && tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json && electron .",
+    "build:renderer": "vite build",
+    "build:main": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json",
+    "build": "npm run build:renderer && npm run build:main",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux"
+  },
+  "dependencies": {
+    "katex": "^0.16.45",
+    "lucide-react": "^1.14.0",
+    "pdf-parse": "^2.4.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.1",
+    "electron-builder": "^26.8.1",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.paper2corecode.app",
+    "productName": "Paper2CoreCode",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "artifactName": "Paper2CoreCode-${version}-windows-${arch}.${ext}",
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "mac": {
+      "identity": null,
+      "artifactName": "Paper2CoreCode-${version}-macos-${arch}.${ext}",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "artifactName": "Paper2CoreCode-${version}-linux-${arch}.${ext}",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Science"
+    }
+  }
+}
