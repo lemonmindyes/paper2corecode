@@ -11,6 +11,21 @@ const PROVIDERS = [
       { value: 'deepseek-v4-pro', label: 'V4 Pro' },
     ],
   },
+  {
+    value: 'jiekou',
+    label: 'Jiekou',
+    models: [
+      { value: 'claude-opus-4-7', label: 'Claude Opus 4-7' },
+      { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4-6' },
+      { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite Preview' },
+      { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview' },
+      { value: 'gpt-5.5-pro', label: 'GPT 5.5 Pro (unsupported)', disabled: true },
+      { value: 'gpt-5.4-pro', label: 'GPT 5.4 Pro (unsupported)', disabled: true },
+      { value: 'gpt-5.5', label: 'GPT 5.5' },
+      { value: 'gpt-5.4-nano', label: 'GPT 5.4 Nano (unsupported)', disabled: true },
+      { value: 'gpt-5.4-mini', label: 'GPT 5.4 Mini (unsupported)', disabled: true },
+    ],
+  },
 ]
 
 const sectionStyle: React.CSSProperties = {
@@ -77,35 +92,31 @@ export default function SettingsPanel({
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  const applySettings = (s: { apiKey: string; provider: string; model: string }) => {
+    const nextProvider = s.provider || PROVIDERS[0].value
+    const providerConfig = PROVIDERS.find((item) => item.value === nextProvider) || PROVIDERS[0]
+    const nextModel = providerConfig.models.some((item) => item.value === s.model)
+      ? s.model
+      : providerConfig.models[0].value
+    const hasKey = s.apiKey.trim().length > 0
+
+    setApiKey(s.apiKey)
+    setProvider(providerConfig.value)
+    setModel(nextModel)
+    setConfigured(hasKey)
+    setEditing(!hasKey)
+    onApiKeyConfiguredChange(hasKey)
+  }
+
   useEffect(() => {
     window.electronAPI.getSettings().then((s) => {
-      setApiKey(s.apiKey)
-      const nextProvider = s.provider || PROVIDERS[0].value
-      const providerConfig = PROVIDERS.find((item) => item.value === nextProvider) || PROVIDERS[0]
-      const nextModel = providerConfig.models.some((item) => item.value === s.model)
-        ? s.model
-        : providerConfig.models[0].value
-
-      setProvider(providerConfig.value)
-      setModel(nextModel)
-      const hasKey = s.apiKey.length > 0
-      setConfigured(hasKey)
-      setEditing(!hasKey)
+      applySettings(s)
       setLoading(false)
     })
   }, [])
 
   const saveConfig = async (next: { provider?: string; model?: string; apiKey?: string }) => {
-    const nextProvider = next.provider ?? provider
-    const nextModel = next.model ?? model
-    const nextApiKey = next.apiKey ?? apiKey
-
-    await window.electronAPI.saveSettings({
-      apiKey: nextApiKey,
-      provider: nextProvider,
-      model: nextModel,
-      language,
-    })
+    await window.electronAPI.saveSettings(next)
   }
 
   const handleProviderChange = async (nextProvider: string) => {
@@ -114,7 +125,9 @@ export default function SettingsPanel({
 
     setProvider(providerConfig.value)
     setModel(nextModel)
-    await saveConfig({ provider: providerConfig.value, model: nextModel })
+    await saveConfig({ provider: providerConfig.value })
+    const savedSettings = await window.electronAPI.getSettings()
+    applySettings(savedSettings)
   }
 
   const handleModelChange = async (nextModel: string) => {
@@ -124,7 +137,7 @@ export default function SettingsPanel({
 
   const handleSave = async () => {
     const hasKey = apiKey.trim().length > 0
-    await saveConfig({ apiKey })
+    await saveConfig({ provider, apiKey })
     setSaved(true)
     setConfigured(hasKey)
     setEditing(!hasKey)
@@ -169,7 +182,7 @@ export default function SettingsPanel({
         style={selectStyle}
       >
         {currentProvider.models.map((item) => (
-          <option key={item.value} value={item.value}>{item.label}</option>
+          <option key={item.value} value={item.value} disabled={item.disabled}>{item.label}</option>
         ))}
       </select>
 

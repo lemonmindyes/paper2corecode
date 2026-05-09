@@ -190,7 +190,7 @@ function ErrorCard({ language, error }: { language: Language; error: string }) {
           {t(language, 'result.errorTitle')}
         </p>
       </div>
-      <p style={{ fontSize: 15, color: 'var(--color-error-text)', lineHeight: 1.7, marginBottom: 14 }}>
+      <p style={{ fontSize: 15, color: 'var(--color-error-text)', lineHeight: 1.7, marginBottom: 14, whiteSpace: 'pre-wrap' }}>
         {error}
       </p>
       <div style={{

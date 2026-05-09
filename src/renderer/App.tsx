@@ -18,7 +18,7 @@ export default function App() {
 
   useEffect(() => {
     window.electronAPI.getSettings().then((s) => {
-      setApiKeyConfigured(s.apiKey.length > 0)
+      setApiKeyConfigured(s.apiKey.trim().length > 0)
       if (s.language) setLanguage(s.language)
     })
     return () => cleanupRef.current?.()
@@ -79,7 +79,8 @@ export default function App() {
       setStreamingSummary(res.summary)
       setShowCompletionDialog(true)
     } else {
-      setError(res.error.message)
+      const detail = res.error.detail?.trim()
+      setError(detail ? `${res.error.message}\n\n${detail}` : res.error.message)
     }
   }
 
@@ -92,8 +93,7 @@ export default function App() {
 
   const handleLanguageChange = async (lang: Language) => {
     setLanguage(lang)
-    const settings = await window.electronAPI.getSettings()
-    await window.electronAPI.saveSettings({ ...settings, language: lang })
+    await window.electronAPI.saveSettings({ language: lang })
   }
 
   const progressMessages = progress.map((p) => p.message)

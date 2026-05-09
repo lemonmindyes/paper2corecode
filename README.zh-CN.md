@@ -9,7 +9,7 @@ Paper2CoreCode 是一款桌面端论文阅读与核心代码生成工具，可�
 ## 它能做什么 ✨
 
 - 📄 分析学术论文 PDF。
-- 🧠 使用 DeepSeek 生成结构化论文总结。
+- 🧠 使用 DeepSeek / Jiekou 生成结构化论文总结。
 - 🧮 清晰渲染 Markdown、表格和 LaTeX 公式。
 - 💻 判断论文是否需要生成核心代码。
 - 📦 将生成的核心代码导出为本地项目文件夹。
@@ -18,18 +18,35 @@ Paper2CoreCode 是一款桌面端论文阅读与核心代码生成工具，可�
 
 ## 核心流程 🚀
 
-1. 输入 DeepSeek API Key。
-2. 选择 DeepSeek 模型。
+1. 在侧边栏选择模型供应商（DeepSeek / Jiekou）并配置 API Key。
+2. 选择模型。
 3. 选择论文 PDF。
 4. 开始分析。
 5. 阅读实时流式生成的论文总结。
 6. 如果存在核心代码，下载生成的代码项目。
 
+## 模型供应商
+
+Paper2CoreCode 支持多个 OpenAI-compatible 模型供应商：
+
+- DeepSeek：`deepseek-v4-flash`、`deepseek-v4-pro`。
+- Jiekou：当前 chat completions 流程可用的 Claude、Gemini 3.1 preview 和 GPT 5.5 模型。
+
+API Key 和模型选择会按供应商分别保存在本机应用用户数据目录中。切换供应商时，应用会重新加载该供应商自己的 API Key 和模型。
+
+部分 Jiekou GPT 变体会在模型选择器中标记为 unsupported 并禁用，因为当前 Jiekou API 网关会拒绝它们用于本应用的 chat completions 流程。
+
+## CI 与发布
+
+Pull Request 会通过 GitHub Actions 在 Windows、macOS 和 Linux 上运行 `npm run build`。
+
+推送类似 `v0.1.2` 的版本标签时，会触发 release workflow，并为 Windows、macOS 和 Linux 构建平台安装包。
+
 ## 技术栈 🛠️
 
 - Electron + TypeScript
 - React + Vite
-- DeepSeek API
+- DeepSeek / Jiekou API（OpenAI-compatible）
 - `pdf-parse`
 - `react-markdown` + KaTeX
 - `electron-builder`

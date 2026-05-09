@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron'
 import * as path from 'path'
+import { getActiveSettings, saveSettingsPatch, SettingsPatch } from './backend/settingsStore'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -38,24 +39,16 @@ ipcMain.handle('select-pdf', async () => {
   return result.filePaths[0]
 })
 
-ipcMain.handle('save-settings', async (_event, settings: { apiKey: string; provider: string; model: string; language: string }) => {
-  const fs = await import('fs')
-  const p = await import('path')
-  const cfgPath = p.join(app.getPath('userData'), 'config.json')
-  fs.writeFileSync(cfgPath, JSON.stringify(settings), 'utf-8')
+ipcMain.handle('save-settings', async (_event, settings: SettingsPatch) => {
+  saveSettingsPatch(settings)
   return true
 })
 
 ipcMain.handle('get-settings', async () => {
-  const defaults = { apiKey: '', provider: 'deepseek', model: 'deepseek-v4-flash', language: 'zh-CN' }
   try {
-    const fs = await import('fs')
-    const p = await import('path')
-    const cfgPath = p.join(app.getPath('userData'), 'config.json')
-    const data = fs.readFileSync(cfgPath, 'utf-8')
-    return { ...defaults, ...JSON.parse(data) }
+    return getActiveSettings()
   } catch {
-    return defaults
+    return { apiKey: '', provider: 'deepseek', model: 'deepseek-v4-flash', language: 'zh-CN' }
   }
 })
 
