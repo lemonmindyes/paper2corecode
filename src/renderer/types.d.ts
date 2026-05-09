@@ -13,7 +13,7 @@ interface AnalysisError {
 
 interface ElectronAPI {
   selectPDF: () => Promise<string | null>
-  saveSettings: (settings: { apiKey: string; provider: string; model: string; language: Language }) => Promise<boolean>
+  saveSettings: (settings: { apiKey?: string; provider?: string; model?: string; language?: Language }) => Promise<boolean>
   getSettings: () => Promise<{ apiKey: string; provider: string; model: string; language: Language }>
   analyzePaper: (pdfPath: string) => Promise<AnalysisResult | AnalysisError>
   downloadCoreCode: () => Promise<{ ok: true; path: string } | { ok: false; error: string }>

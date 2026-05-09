@@ -1,27 +1,41 @@
-import * as fs from 'fs'
-import * as path from 'path'
-import { app } from 'electron'
 import { AppError, ErrorCodes } from './errors'
+import { getActiveSettings } from './settingsStore'
 
-const API_BASE = 'https://api.deepseek.com/v1'
-
-interface DeepSeekConfig {
-  apiKey: string
-  provider: string
-  model: string
+interface ProviderConfig {
+  baseURL: string
 }
 
-export function loadConfig(): DeepSeekConfig {
-  const cfgPath = path.join(app.getPath('userData'), 'config.json')
-  if (!fs.existsSync(cfgPath)) {
-    throw new AppError(ErrorCodes.API_KEY_MISSING, 'API Key not configured. Please save your API Key in Settings first.')
-  }
-  const raw = fs.readFileSync(cfgPath, 'utf-8')
-  const config: DeepSeekConfig = {
-    provider: 'deepseek',
-    model: 'deepseek-v4-flash',
-    ...JSON.parse(raw),
-  }
+interface JiekouModelConfig {
+  maxTokens?: number
+  tokenParam?: 'max_tokens' | 'max_completion_tokens'
+  temperature?: number
+  unsupportedReason?: string
+}
+
+const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
+  deepseek: { baseURL: 'https://api.deepseek.com/v1' },
+  jiekou: { baseURL: 'https://api.jiekou.ai/openai' },
+}
+
+const JIEKOU_MODEL_CONFIGS: Record<string, JiekouModelConfig> = {
+  'gemini-3.1-flash-lite-preview': { maxTokens: 65536, tokenParam: 'max_tokens', temperature: 0.7 },
+  'gemini-3.1-pro-preview': { maxTokens: 65536, tokenParam: 'max_tokens', temperature: 0.7 },
+  'gpt-5.4-nano': {
+    unsupportedReason: 'Jiekou API reports this beta model is not usable with the current fixed request parameters.',
+  },
+  'gpt-5.4-mini': {
+    unsupportedReason: 'Jiekou API reports this beta model is not usable with the current fixed request parameters.',
+  },
+  'gpt-5.4-pro': {
+    unsupportedReason: 'Jiekou API reports this model does not support the chat/completions endpoint.',
+  },
+  'gpt-5.5-pro': {
+    unsupportedReason: 'Jiekou API reports this model does not support the chat/completions endpoint.',
+  },
+}
+
+export function loadConfig() {
+  const config = getActiveSettings()
   if (!config.apiKey || config.apiKey.trim() === '') {
     throw new AppError(ErrorCodes.API_KEY_MISSING, 'API Key is empty. Please enter a valid API Key in Settings.')
   }
@@ -33,22 +47,54 @@ export async function callDeepSeek(
   onUpdate?: (chunk: string) => void
 ): Promise<string> {
   const config = loadConfig()
+  const providerCfg = PROVIDER_CONFIGS[config.provider]
+
+  if (!providerCfg) {
+    throw new AppError(ErrorCodes.API_SERVER_ERROR, `Unsupported provider: ${config.provider}`)
+  }
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 120_000)
 
   try {
-    const response = await fetch(`${API_BASE}/chat/completions`, {
+    const modelCfg = config.provider === 'jiekou' ? JIEKOU_MODEL_CONFIGS[config.model] : undefined
+
+    if (modelCfg?.unsupportedReason) {
+      throw new AppError(
+        ErrorCodes.API_SERVER_ERROR,
+        `Model ${config.model} is not supported by the current API endpoint.`,
+        modelCfg.unsupportedReason
+      )
+    }
+
+    const requestBody: {
+      model: string
+      messages: { role: 'system' | 'user' | 'assistant'; content: string }[]
+      stream: boolean
+      max_tokens?: number
+      max_completion_tokens?: number
+      temperature?: number
+    } = {
+      model: config.model,
+      messages,
+      stream: true,
+    }
+
+    if (modelCfg?.maxTokens && modelCfg.tokenParam) {
+      requestBody[modelCfg.tokenParam] = modelCfg.maxTokens
+    }
+
+    if (modelCfg?.temperature !== undefined) {
+      requestBody.temperature = modelCfg.temperature
+    }
+
+    const response = await fetch(`${providerCfg.baseURL}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${config.apiKey}`,
       },
-      body: JSON.stringify({
-        model: config.model,
-        messages,
-        stream: true,
-      }),
+      body: JSON.stringify(requestBody),
       signal: controller.signal,
     })
     clearTimeout(timeout)
@@ -63,7 +109,7 @@ export async function callDeepSeek(
         default:
           throw new AppError(
             ErrorCodes.API_SERVER_ERROR,
-            `DeepSeek API returned error (${response.status})`,
+            `API returned error (${response.status})`,
             body.slice(0, 500)
           )
       }
@@ -118,7 +164,7 @@ export async function callDeepSeek(
     }
     throw new AppError(
       ErrorCodes.API_NETWORK_ERROR,
-      'Network error while connecting to DeepSeek API. Please check your internet connection.',
+      'Network error while connecting to API. Please check your internet connection.',
       (err as Error).message
     )
   }

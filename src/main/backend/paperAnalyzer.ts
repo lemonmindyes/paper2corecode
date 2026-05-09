@@ -3,6 +3,7 @@ import { callDeepSeek } from './deepseekClient'
 import { buildCombinedAnalysisPrompt } from './promptBuilder'
 import { cacheCodeBundle, clearCache, GeneratedFile } from './codeCache'
 import { AnalysisProgress, AnalysisResult, AppError, ErrorCodes } from './errors'
+import { getActiveSettings } from './settingsStore'
 
 const SUMMARY_START = '<P2CC_SUMMARY>'
 const SUMMARY_END = '</P2CC_SUMMARY>'
@@ -128,12 +129,7 @@ export async function analyzePaper(
 ): Promise<AnalysisResult> {
   let language = 'zh-CN'
   try {
-    const fs = await import('fs')
-    const p = await import('path')
-    const { app } = await import('electron')
-    const cfgPath = p.join(app.getPath('userData'), 'config.json')
-    const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf-8'))
-    language = cfg.language || 'zh-CN'
+    language = getActiveSettings().language || 'zh-CN'
   } catch {}
 
   const msg = (zh: string, en: string) => language === 'en-US' ? en : zh

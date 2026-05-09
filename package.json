@@ -1,7 +1,7 @@
 {
   "name": "paper2corecode",
-  "version": "0.1.1",
-  "description": "Desktop app to analyze papers and extract core code with DeepSeek",
+  "version": "0.1.2",
+  "description": "Desktop app to analyze papers and extract core code with DeepSeek / Jiekou",
   "author": {
     "name": "lemonmindyes",
     "email": "lemonmindyes@users.noreply.github.com"
