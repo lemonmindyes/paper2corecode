@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   package:
     name: Package ${{ matrix.platform }}
@@ -18,7 +21,7 @@ jobs:
       matrix:
         include:
           - platform: windows
-            os: windows-latest
+            os: windows-2022
             command: npm run dist:win
             assets: |
               release/*.exe
@@ -43,14 +46,24 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Linux packaging dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 || sudo apt-get install -y libfuse2t64
+
       - name: Build package
         run: ${{ matrix.command }}
+
+      - name: List release artifacts
+        shell: bash
+        run: ls -la release
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4

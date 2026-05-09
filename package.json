@@ -1,8 +1,11 @@
 {
   "name": "paper2corecode",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Desktop app to analyze papers and extract core code with DeepSeek",
-  "author": "lemonmindyes",
+  "author": {
+    "name": "lemonmindyes",
+    "email": "lemonmindyes@users.noreply.github.com"
+  },
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -16,10 +19,10 @@
     "build:renderer": "vite build",
     "build:main": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json",
     "build": "npm run build:renderer && npm run build:main",
-    "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:mac": "npm run build && electron-builder --mac",
-    "dist:linux": "npm run build && electron-builder --linux"
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never"
   },
   "dependencies": {
     "katex": "^0.16.45",
@@ -72,6 +75,7 @@
     },
     "linux": {
       "artifactName": "Paper2CoreCode-${version}-linux-${arch}.${ext}",
+      "maintainer": "lemonmindyes <lemonmindyes@users.noreply.github.com>",
       "target": [
         "AppImage",
         "deb"
