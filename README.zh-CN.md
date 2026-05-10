@@ -31,6 +31,8 @@ Paper2CoreCode 支持多个 OpenAI-compatible 模型供应商：
 
 - DeepSeek：`deepseek-v4-flash`、`deepseek-v4-pro`。
 - Jiekou：当前 chat completions 流程可用的 Claude、Gemini 3.1 preview 和 GPT 5.5 模型。
+- MiniMax：`MiniMax-M2.7`、`MiniMax-M2.7-highspeed`、`MiniMax-M2.5`、`MiniMax-M2.5-highspeed`。
+- GLM：`glm-5.1`、`glm-5`、`glm-5-turbo`。
 
 API Key 和模型选择会按供应商分别保存在本机应用用户数据目录中。切换供应商时，应用会重新加载该供应商自己的 API Key 和模型。
 

@@ -26,6 +26,25 @@ const PROVIDERS = [
       { value: 'gpt-5.4-mini', label: 'GPT 5.4 Mini (unsupported)', disabled: true },
     ],
   },
+  {
+    value: 'minimax',
+    label: 'MiniMax',
+    models: [
+      { value: 'MiniMax-M2.7', label: 'MiniMax M2.7' },
+      { value: 'MiniMax-M2.7-highspeed', label: 'MiniMax M2.7 Highspeed' },
+      { value: 'MiniMax-M2.5', label: 'MiniMax M2.5' },
+      { value: 'MiniMax-M2.5-highspeed', label: 'MiniMax M2.5 Highspeed' },
+    ],
+  },
+  {
+    value: 'glm',
+    label: 'GLM',
+    models: [
+      { value: 'glm-5.1', label: 'GLM 5.1' },
+      { value: 'glm-5', label: 'GLM 5' },
+      { value: 'glm-5-turbo', label: 'GLM 5 Turbo' },
+    ],
+  },
 ]
 
 const sectionStyle: React.CSSProperties = {
