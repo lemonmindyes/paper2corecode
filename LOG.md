@@ -7,6 +7,8 @@
 - Added local validation so generated code files must exactly match the blueprint file list.
 - Added blueprint metadata to cached code bundles and export README content.
 - Added MiniMax and GLM model providers alongside DeepSeek and Jiekou.
+- Added Vitest-based backend functional tests for blueprint validation, analyzer parsing, and code export.
+- Updated PR CI to run tests on Windows, macOS, and Linux before building.
 
 ## 0.1.2
 
