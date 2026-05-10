@@ -1,7 +1,7 @@
 import { parsePDF } from './pdfParser'
 import { callDeepSeek } from './deepseekClient'
 import { buildCombinedAnalysisPrompt } from './promptBuilder'
-import { cacheCodeBundle, clearCache, GeneratedFile } from './codeCache'
+import { cacheCodeBundle, clearCache, CodeBlueprint, CodeBlueprintFile, GeneratedFile } from './codeCache'
 import { AnalysisProgress, AnalysisResult, AppError, ErrorCodes } from './errors'
 import { getActiveSettings } from './settingsStore'
 
@@ -9,8 +9,38 @@ const SUMMARY_START = '<P2CC_SUMMARY>'
 const SUMMARY_END = '</P2CC_SUMMARY>'
 const DECISION_START = '<P2CC_CODE_DECISION>'
 const DECISION_END = '</P2CC_CODE_DECISION>'
+const BLUEPRINT_START = '<P2CC_CODE_BLUEPRINT>'
+const BLUEPRINT_END = '</P2CC_CODE_BLUEPRINT>'
 const CODE_BUNDLE_START = '<P2CC_CODE_BUNDLE>'
 const CODE_BUNDLE_END = '</P2CC_CODE_BUNDLE>'
+
+const HIGH_RISK_FILE_NAMES = new Set([
+  'baseline.py',
+  'config.py',
+  'dataset.py',
+  'dataloader.py',
+  'experiment.py',
+  'experiment_runner.py',
+  'inference.py',
+  'main.py',
+  'pipeline.py',
+  'requirements.txt',
+  'train.py',
+  'utils.py',
+])
+
+const HIGH_RISK_JUSTIFICATION_TERMS = [
+  'proposed',
+  'novel',
+  'core contribution',
+  'method itself',
+  'algorithm',
+  'procedure',
+  '本文提出',
+  '提出的',
+  '核心贡献',
+  '方法本身',
+]
 
 function extractJsonObject(raw: string): unknown {
   const trimmed = raw.trim()
@@ -53,6 +83,125 @@ function normalizeFileContent(content: string): string {
   return content.replace(/^\r?\n/, '').replace(/\r?\n$/, '')
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function requireNonEmptyString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `模型返回的代码蓝图缺少 ${fieldName}`)
+  }
+
+  return value.trim()
+}
+
+function requireStringArray(value: unknown, fieldName: string): string[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `模型返回的代码蓝图缺少 ${fieldName}`)
+  }
+
+  const strings = value.map((item) => requireNonEmptyString(item, fieldName))
+  return strings
+}
+
+function optionalStringArray(value: unknown, fieldName: string): string[] | undefined {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value)) {
+    throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `模型返回的代码蓝图 ${fieldName} 格式无效`)
+  }
+
+  return value.map((item) => requireNonEmptyString(item, fieldName))
+}
+
+function requiresHighRiskJustification(file: CodeBlueprintFile): boolean {
+  const fileName = file.path.split('/').pop()?.toLowerCase() || ''
+  if (!HIGH_RISK_FILE_NAMES.has(fileName)) return false
+
+  const justification = [file.purpose, file.evidence, ...file.mustInclude].join(' ').toLowerCase()
+  return !HIGH_RISK_JUSTIFICATION_TERMS.some((term) => justification.includes(term))
+}
+
+function parseCodeBlueprint(raw: string): CodeBlueprint {
+  const parsed = extractJsonObject(raw)
+  if (!isRecord(parsed)) {
+    throw new AppError(ErrorCodes.API_RESPONSE_INVALID, '模型返回的代码蓝图无效')
+  }
+
+  const rawFiles = parsed.files
+  if (!Array.isArray(rawFiles) || rawFiles.length === 0) {
+    throw new AppError(ErrorCodes.API_RESPONSE_INVALID, '模型返回的代码蓝图缺少文件规划')
+  }
+
+  const paths = new Set<string>()
+  const files = rawFiles.map((rawFile, index): CodeBlueprintFile => {
+    if (!isRecord(rawFile)) {
+      throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `模型返回的代码蓝图文件 #${index + 1} 无效`)
+    }
+
+    const path = validateGeneratedFilePath(requireNonEmptyString(rawFile.path, 'file.path'))
+    if (!path.startsWith('core_code/')) {
+      throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `代码蓝图文件必须位于 core_code/ 目录: ${path}`)
+    }
+    if (paths.has(path)) {
+      throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `代码蓝图包含重复文件路径: ${path}`)
+    }
+    paths.add(path)
+
+    const file: CodeBlueprintFile = {
+      path,
+      purpose: requireNonEmptyString(rawFile.purpose, 'file.purpose'),
+      mainSymbols: requireStringArray(rawFile.mainSymbols, 'file.mainSymbols'),
+      mustInclude: requireStringArray(rawFile.mustInclude, 'file.mustInclude'),
+      mustNotInclude: requireStringArray(rawFile.mustNotInclude, 'file.mustNotInclude'),
+      inputs: optionalStringArray(rawFile.inputs, 'file.inputs'),
+      outputs: optionalStringArray(rawFile.outputs, 'file.outputs'),
+      assumptions: optionalStringArray(rawFile.assumptions, 'file.assumptions'),
+      evidence: typeof rawFile.evidence === 'string' ? rawFile.evidence.trim() : undefined,
+    }
+
+    if (requiresHighRiskJustification(file)) {
+      throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `高风险文件缺少核心贡献依据: ${path}`)
+    }
+
+    return file
+  })
+
+  const omitted = Array.isArray(parsed.omitted)
+    ? parsed.omitted.map((item, index) => {
+        if (!isRecord(item)) {
+          throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `代码蓝图 omitted #${index + 1} 无效`)
+        }
+        return {
+          item: requireNonEmptyString(item.item, 'omitted.item'),
+          reason: requireNonEmptyString(item.reason, 'omitted.reason'),
+        }
+      })
+    : undefined
+
+  const minimalityCheck = isRecord(parsed.minimalityCheck)
+    ? {
+        whyTheseFilesAreMinimal: typeof parsed.minimalityCheck.whyTheseFilesAreMinimal === 'string'
+          ? parsed.minimalityCheck.whyTheseFilesAreMinimal.trim()
+          : undefined,
+        couldAnyFileBeRemoved: typeof parsed.minimalityCheck.couldAnyFileBeRemoved === 'boolean'
+          ? parsed.minimalityCheck.couldAnyFileBeRemoved
+          : undefined,
+        overGenerationRisk: typeof parsed.minimalityCheck.overGenerationRisk === 'string'
+          ? parsed.minimalityCheck.overGenerationRisk.trim()
+          : undefined,
+      }
+    : undefined
+
+  return {
+    paperDomain: typeof parsed.paperDomain === 'string' ? parsed.paperDomain.trim() : undefined,
+    coreContribution: requireNonEmptyString(parsed.coreContribution, 'coreContribution'),
+    minimalImplementationBoundary: requireNonEmptyString(parsed.minimalImplementationBoundary, 'minimalImplementationBoundary'),
+    files,
+    omitted,
+    minimalityCheck,
+  }
+}
+
 function parseTaggedCodeFiles(raw: string): GeneratedFile[] {
   const files: GeneratedFile[] = []
   const fileRegex = /<P2CC_FILE\s+path=(['"])(.*?)\1>([\s\S]*?)<\/P2CC_FILE>/g
@@ -65,6 +214,30 @@ function parseTaggedCodeFiles(raw: string): GeneratedFile[] {
   }
 
   return files
+}
+
+function validateFilesAgainstBlueprint(files: GeneratedFile[], blueprint: CodeBlueprint): void {
+  const blueprintPaths = new Set(blueprint.files.map((file) => file.path))
+  const generatedPaths = new Set<string>()
+
+  for (const file of files) {
+    if (file.content.trim() === '') {
+      throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `模型生成了空代码文件: ${file.path}`)
+    }
+    if (!blueprintPaths.has(file.path)) {
+      throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `模型生成了蓝图外文件: ${file.path}`)
+    }
+    if (generatedPaths.has(file.path)) {
+      throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `模型重复生成文件: ${file.path}`)
+    }
+    generatedPaths.add(file.path)
+  }
+
+  for (const path of blueprintPaths) {
+    if (!generatedPaths.has(path)) {
+      throw new AppError(ErrorCodes.API_RESPONSE_INVALID, `模型未生成蓝图声明的文件: ${path}`)
+    }
+  }
 }
 
 function removePartialEndTagSuffix(content: string, endTag: string): string {
@@ -146,6 +319,7 @@ export async function analyzePaper(
     let streamedSummary = ''
     let summaryClosed = false
     let decisionProgressSent = false
+    let blueprintProgressSent = false
     let bundleProgressSent = false
 
     await callDeepSeek(
@@ -180,9 +354,14 @@ export async function analyzePaper(
           })
         }
 
+        if (!blueprintProgressSent && rawOutput.includes(BLUEPRINT_END)) {
+          blueprintProgressSent = true
+          onProgress({ stage: 'generating_code', message: msg('核心代码蓝图已生成，正在生成最小代码文件...', 'Core code blueprint generated, creating minimal files...') })
+        }
+
         if (!bundleProgressSent && rawOutput.includes(CODE_BUNDLE_START)) {
           bundleProgressSent = true
-          onProgress({ stage: 'generating_code', message: msg('正在生成组件化代码文件...', 'Generating componentized code files...') })
+          onProgress({ stage: 'generating_code', message: msg('正在按蓝图生成核心代码文件...', 'Generating core code files from blueprint...') })
         }
       }
     )
@@ -194,16 +373,23 @@ export async function analyzePaper(
     let hasCoreCode = false
 
     if (decision.needed) {
-      onProgress({ stage: 'generating_code', message: msg('需要生成核心代码，正在处理组件化代码...', 'Core code is needed, processing componentized code...') })
-      const codeContent = extractTaggedContent(rawOutput, CODE_BUNDLE_START, CODE_BUNDLE_END, '模型判断需要生成代码，但缺少代码文件结构')
-      const files = parseTaggedCodeFiles(codeContent)
+      onProgress({ stage: 'generating_code', message: msg('需要生成核心代码，正在校验蓝图和代码范围...', 'Core code is needed, validating blueprint and code scope...') })
+      try {
+        const blueprintContent = extractTaggedContent(rawOutput, BLUEPRINT_START, BLUEPRINT_END, '模型判断需要生成代码，但缺少核心代码蓝图')
+        const blueprint = parseCodeBlueprint(blueprintContent)
+        const codeContent = extractTaggedContent(rawOutput, CODE_BUNDLE_START, CODE_BUNDLE_END, '模型判断需要生成代码，但缺少代码文件结构')
+        const files = parseTaggedCodeFiles(codeContent)
 
-      if (files.length === 0) {
-        onProgress({ stage: 'generating_code', message: msg('论文不包含可提取的核心代码', 'Paper does not contain extractable core code') })
-      } else {
-        cacheCodeBundle({ readme: cleanedSummary.trim(), files })
+        validateFilesAgainstBlueprint(files, blueprint)
+        cacheCodeBundle({ readme: cleanedSummary.trim(), files, blueprint })
         hasCoreCode = true
-        onProgress({ stage: 'generating_code', message: msg('组件化代码项目已生成', 'Componentized code project has been generated') })
+        onProgress({ stage: 'generating_code', message: msg('最小核心代码已按蓝图生成', 'Minimal core code has been generated from the blueprint') })
+      } catch (err) {
+        if (err instanceof AppError && err.code === ErrorCodes.API_RESPONSE_INVALID) {
+          onProgress({ stage: 'generating_code', message: msg('模型未能生成有效的核心代码蓝图，本次仅保留论文总结', 'Model did not produce a valid core code blueprint; keeping summary only') })
+        } else {
+          throw err
+        }
       }
     } else {
       onProgress({ stage: 'generating_code', message: msg('模型判断无需生成核心代码', 'Model determined core code is not needed') })

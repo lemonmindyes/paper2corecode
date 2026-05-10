@@ -1,5 +1,13 @@
 # Release Log
 
+## 0.1.3
+
+- Added a core-code blueprint step before generated files are cached for export.
+- Reworked code generation guidance to avoid fixed full-project templates and focus on the paper's minimal computational contribution.
+- Added local validation so generated code files must exactly match the blueprint file list.
+- Added blueprint metadata to cached code bundles and export README content.
+- Added MiniMax and GLM model providers alongside DeepSeek and Jiekou.
+
 ## 0.1.2
 
 - Added Jiekou as a model provider alongside DeepSeek.

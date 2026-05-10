@@ -239,48 +239,70 @@ $$
 {"needed": true, "reason": "brief reason"}
 </P2CC_CODE_DECISION>
 
-Use "needed": true only if the paper clearly describes at least one implementable algorithm, model architecture, loss/metric, training/inference procedure, or pseudocode that can be translated into reusable code. Use "needed": false for surveys, purely theoretical discussions without implementable procedure, position papers, benchmarks without a new method, or papers lacking enough implementation detail.
+Use "needed": true only if the paper clearly describes at least one implementable computational contribution such as an algorithm, formula, objective, constraint, model component, control rule, signal-processing method, statistical estimator, data-analysis procedure, pseudocode, or other reusable method. Use "needed": false for surveys, purely theoretical discussions without implementable procedure, position papers, benchmarks without a new method, or papers lacking enough implementation detail.
 
-3. If "needed" is false, stop immediately after </P2CC_CODE_DECISION>. Do NOT output a code bundle.
+3. If "needed" is false, stop immediately after </P2CC_CODE_DECISION>. Do NOT output a code blueprint or code bundle.
 
-4. If "needed" is true, continue by outputting componentized files inside these exact tags:
+4. If "needed" is true, first output a minimal core code blueprint as strict JSON inside these exact tags:
+<P2CC_CODE_BLUEPRINT>
+{
+  "paperDomain": "brief domain inferred from the paper",
+  "coreContribution": "the paper's smallest implementable computational contribution",
+  "minimalImplementationBoundary": "exactly what the generated code should implement, and what it should not implement",
+  "files": [
+    {
+      "path": "core_code/descriptive_file_name.py",
+      "purpose": "why this file is necessary for the minimal core contribution",
+      "mainSymbols": ["function_or_class_name"],
+      "mustInclude": ["specific method elements that must appear in this file"],
+      "mustNotInclude": ["experiments, baselines, pipelines, or unrelated engineering that must not appear"],
+      "inputs": ["expected input data or parameters"],
+      "outputs": ["expected return values or outputs"],
+      "assumptions": ["necessary implementation assumptions because the paper does not specify every engineering detail"],
+      "evidence": "paper section, formula, algorithm, or explicit description that supports this file"
+    }
+  ],
+  "omitted": [
+    {
+      "item": "intentionally omitted item",
+      "reason": "why it is not part of the paper's core contribution"
+    }
+  ],
+  "minimalityCheck": {
+    "whyTheseFilesAreMinimal": "why this file set is the smallest sufficient implementation",
+    "couldAnyFileBeRemoved": false,
+    "overGenerationRisk": "low"
+  }
+}
+</P2CC_CODE_BLUEPRINT>
+
+Blueprint rules:
+- Do NOT assume the paper is about AI, machine learning, or software engineering. Infer the domain from the paper.
+- Do NOT use a fixed project template. The file list must be designed from the paper's smallest implementable computational contribution.
+- Each file must be justified by the core contribution. If a file is not necessary for that contribution, omit it.
+- Prefer one or a few focused source files over a complete runnable project.
+- Put generated source files under "core_code/". Do not include README.md in the blueprint.
+- Avoid generic files such as config.py, utils.py, main.py, pipeline.py, dataset.py, dataloader.py, train.py, inference.py, experiment.py, experiment_runner.py, baseline.py, or requirements.txt unless the paper's novel contribution explicitly requires that exact file.
+- Experimental setup, baselines, datasets, training recipes, simulators, and application platforms are NOT core contribution code unless the paper proposes them as the method itself.
+- The blueprint must state what is intentionally omitted so the exported code remains minimal.
+
+5. Then output code files inside these exact tags. The code bundle MUST contain exactly the files listed in P2CC_CODE_BLUEPRINT.files, no more and no fewer:
 <P2CC_CODE_BUNDLE>
-<P2CC_FILE path="requirements.txt">
-...
-</P2CC_FILE>
-<P2CC_FILE path="core_code/__init__.py">
-...
-</P2CC_FILE>
-<P2CC_FILE path="core_code/config.py">
-...
-</P2CC_FILE>
-<P2CC_FILE path="core_code/model.py">
-...
-</P2CC_FILE>
-<P2CC_FILE path="core_code/losses.py">
-...
-</P2CC_FILE>
-<P2CC_FILE path="core_code/train.py">
-...
-</P2CC_FILE>
-<P2CC_FILE path="core_code/inference.py">
-...
-</P2CC_FILE>
-<P2CC_FILE path="core_code/example.py">
+<P2CC_FILE path="core_code/descriptive_file_name.py">
 ...
 </P2CC_FILE>
 </P2CC_CODE_BUNDLE>
 
 Code generation rules:
-- Only implement what is clearly described in the paper. Do NOT add features not mentioned.
+- Only implement what is clearly described in the paper and listed in the blueprint. Do NOT add features not mentioned.
 - Do NOT generate README.md. The application creates README.md separately from the paper summary.
 - Every file path MUST be relative, use forward slashes, and MUST NOT contain "..".
 - Put each generated file in its own <P2CC_FILE path="relative/path">...</P2CC_FILE> block.
 - Do NOT encode file contents as JSON strings. Write raw file content directly inside the file block.
-- Prefer the folder name "core_code" for source files.
-- Prefer Python for ML/algorithm papers.
-- Keep files componentized and minimal: configuration, model/algorithm, loss/metrics if needed, training or inference, and an example entry point.
-- Include requirements.txt when dependencies are needed.
+- Use the exact paths declared in P2CC_CODE_BLUEPRINT.files.
+- Do not generate extra helper files outside the blueprint.
+- Prefer Python for algorithmic papers, but choose simple, dependency-light code that best fits the paper's method.
+- Keep the implementation reusable as a core component, not as a full experiment reproduction project.
 - Use comments to explain key implementation decisions only where helpful.`
 
   return {
