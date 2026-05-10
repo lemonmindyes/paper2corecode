@@ -2,28 +2,45 @@
 
 [English](README.md) | 简体中文
 
-Paper2CoreCode 是一款桌面端论文阅读与核心代码生成工具，可以把论文 PDF 转换为结构化总结，并在适合复现时导出核心代码项目。
+Paper2CoreCode 是一款桌面端论文阅读与最小核心代码生成工具，可以把论文 PDF 转换为结构化总结，并在适合实现时导出最小核心代码。
 
-它适合研究人员、工程师和学生快速理解论文内容，并获得可继续开发的组件化实现骨架。
+它适合研究人员、工程师和学生快速理解论文内容，并在可行时获得论文核心可计算贡献的小型实现。
 
 ## 它能做什么 ✨
 
 - 📄 分析学术论文 PDF。
-- 🧠 使用 DeepSeek / Jiekou 生成结构化论文总结。
+- 🧠 使用 DeepSeek / Jiekou / MiniMax / GLM 生成结构化论文总结。
 - 🧮 清晰渲染 Markdown、表格和 LaTeX 公式。
 - 💻 判断论文是否需要生成核心代码。
+- 🧭 在写入文件前规划最小核心代码蓝图。
 - 📦 将生成的核心代码导出为本地项目文件夹。
 - 🌐 支持中文和英文界面/输出切换。
 - 🖥️ 作为本地 Electron 桌面应用运行。
 
 ## 核心流程 🚀
 
-1. 在侧边栏选择模型供应商（DeepSeek / Jiekou）并配置 API Key。
+1. 在侧边栏选择模型供应商（DeepSeek / Jiekou / MiniMax / GLM）并配置 API Key。
 2. 选择模型。
 3. 选择论文 PDF。
 4. 开始分析。
 5. 阅读实时流式生成的论文总结。
-6. 如果存在核心代码，下载生成的代码项目。
+6. 如果适合生成代码，模型会先规划实现论文核心贡献所需的最小文件集合。
+7. 当蓝图和文件通过本地校验后，下载生成的核心代码。
+
+## 核心代码生成
+
+Paper2CoreCode 并不是完整实验复现生成器。它的目标是只导出表达论文核心可计算贡献所需的最小可复用代码。
+
+在代码被缓存并允许下载前，模型必须先生成核心代码蓝图，说明：
+
+- 推断出的论文领域。
+- 要实现的核心贡献。
+- 最小实现边界。
+- 需要生成的精确文件列表。
+- 每个文件的用途和主要符号。
+- 因为不属于核心贡献而故意省略的内容。
+
+生成文件必须与蓝图完全一致。额外文件会被拒绝，缺少蓝图文件会被拒绝，不安全路径也会被拒绝。这有助于避免在论文只提出较小方法时过度生成训练脚本、数据集、baseline、实验运行器或完整应用流水线，例如论文只提出一个 loss、模块、调度规则、信号处理算法、控制器、估计器或目标函数时，只导出对应核心代码。
 
 ## 模型供应商
 
@@ -42,13 +59,13 @@ API Key 和模型选择会按供应商分别保存在本机应用用户数据目
 
 Pull Request 会通过 GitHub Actions 在 Windows、macOS 和 Linux 上运行 `npm run build`。
 
-推送类似 `v0.1.2` 的版本标签时，会触发 release workflow，并为 Windows、macOS 和 Linux 构建平台安装包。
+推送类似 `v0.1.3` 的版本标签时，会触发 release workflow，并为 Windows、macOS 和 Linux 构建平台安装包。
 
 ## 技术栈 🛠️
 
 - Electron + TypeScript
 - React + Vite
-- DeepSeek / Jiekou API（OpenAI-compatible）
+- DeepSeek / Jiekou / MiniMax / GLM APIs（OpenAI-compatible）
 - `pdf-parse`
 - `react-markdown` + KaTeX
 - `electron-builder`
@@ -61,7 +78,7 @@ Pull Request 会通过 GitHub Actions 在 Windows、macOS 和 Linux 上运行 `n
 - macOS：`.dmg` 和 `.zip`
 - Linux：`.AppImage` 和 `.deb`
 
-当推送类似 `v0.1.0` 的版本标签时，Release 产物会由 GitHub Actions 自动构建并上传。
+当推送类似 `v0.1.3` 的版本标签时，Release 产物会由 GitHub Actions 自动构建并上传。
 
 ## 开发
 
@@ -90,7 +107,7 @@ npm run dist:linux
 
 - API Key 会保存在本机应用用户数据目录中。
 - 暂不支持没有可提取文本的扫描版 PDF。
-- 生成的代码会先缓存在本地，再由用户主动导出。
+- 生成的代码会先在本地通过蓝图校验并缓存，再由用户主动导出。
 - 当前桌面端构建未签名，并使用默认 Electron 图标。
 
 ## 开源协议
