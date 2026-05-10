@@ -21,6 +21,19 @@ export const PROVIDER_SETTINGS: Record<string, { defaultModel: string; models: s
       'gpt-5.4-mini',
     ],
   },
+  minimax: {
+    defaultModel: 'MiniMax-M2.7',
+    models: [
+      'MiniMax-M2.7',
+      'MiniMax-M2.7-highspeed',
+      'MiniMax-M2.5',
+      'MiniMax-M2.5-highspeed',
+    ],
+  },
+  glm: {
+    defaultModel: 'glm-5.1',
+    models: ['glm-5.1', 'glm-5', 'glm-5-turbo'],
+  },
 }
 
 export interface ActiveSettings {

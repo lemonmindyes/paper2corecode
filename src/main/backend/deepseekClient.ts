@@ -12,9 +12,17 @@ interface JiekouModelConfig {
   unsupportedReason?: string
 }
 
+interface GlmModelConfig {
+  maxTokens?: number
+  temperature?: number
+  thinking?: { type: 'enabled' }
+}
+
 const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   deepseek: { baseURL: 'https://api.deepseek.com/v1' },
   jiekou: { baseURL: 'https://api.jiekou.ai/openai' },
+  minimax: { baseURL: 'https://api.minimaxi.com/v1' },
+  glm: { baseURL: 'https://open.bigmodel.cn/api/paas/v4' },
 }
 
 const JIEKOU_MODEL_CONFIGS: Record<string, JiekouModelConfig> = {
@@ -32,6 +40,12 @@ const JIEKOU_MODEL_CONFIGS: Record<string, JiekouModelConfig> = {
   'gpt-5.5-pro': {
     unsupportedReason: 'Jiekou API reports this model does not support the chat/completions endpoint.',
   },
+}
+
+const GLM_MODEL_CONFIGS: Record<string, GlmModelConfig> = {
+  'glm-5.1': { maxTokens: 65536, temperature: 1.0, thinking: { type: 'enabled' } },
+  'glm-5': { maxTokens: 65536, temperature: 1.0, thinking: { type: 'enabled' } },
+  'glm-5-turbo': { maxTokens: 65536, temperature: 1.0, thinking: { type: 'enabled' } },
 }
 
 export function loadConfig() {
@@ -57,9 +71,13 @@ export async function callDeepSeek(
   const timeout = setTimeout(() => controller.abort(), 120_000)
 
   try {
-    const modelCfg = config.provider === 'jiekou' ? JIEKOU_MODEL_CONFIGS[config.model] : undefined
+    const modelCfg = config.provider === 'jiekou'
+      ? JIEKOU_MODEL_CONFIGS[config.model]
+      : config.provider === 'glm'
+        ? GLM_MODEL_CONFIGS[config.model]
+        : undefined
 
-    if (modelCfg?.unsupportedReason) {
+    if (modelCfg && 'unsupportedReason' in modelCfg && modelCfg.unsupportedReason) {
       throw new AppError(
         ErrorCodes.API_SERVER_ERROR,
         `Model ${config.model} is not supported by the current API endpoint.`,
@@ -74,18 +92,26 @@ export async function callDeepSeek(
       max_tokens?: number
       max_completion_tokens?: number
       temperature?: number
+      thinking?: { type: string }
     } = {
       model: config.model,
       messages,
       stream: true,
     }
 
-    if (modelCfg?.maxTokens && modelCfg.tokenParam) {
+    if (modelCfg?.maxTokens) {
+      requestBody.max_tokens = modelCfg.maxTokens
+    }
+    if (modelCfg && 'tokenParam' in modelCfg && modelCfg.tokenParam && modelCfg.maxTokens) {
       requestBody[modelCfg.tokenParam] = modelCfg.maxTokens
     }
 
-    if (modelCfg?.temperature !== undefined) {
+    if (modelCfg && 'temperature' in modelCfg && modelCfg.temperature !== undefined) {
       requestBody.temperature = modelCfg.temperature
+    }
+
+    if (modelCfg && 'thinking' in modelCfg && modelCfg.thinking) {
+      requestBody.thinking = modelCfg.thinking
     }
 
     const response = await fetch(`${providerCfg.baseURL}/chat/completions`, {

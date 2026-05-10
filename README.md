@@ -31,6 +31,8 @@ Paper2CoreCode supports multiple OpenAI-compatible model providers:
 
 - DeepSeek: `deepseek-v4-flash`, `deepseek-v4-pro`.
 - Jiekou: Claude, Gemini 3.1 preview, and GPT 5.5 models that work with the current chat completions endpoint.
+- MiniMax: `MiniMax-M2.7`, `MiniMax-M2.7-highspeed`, `MiniMax-M2.5`, `MiniMax-M2.5-highspeed`.
+- GLM: `glm-5.1`, `glm-5`, `glm-5-turbo`.
 
 API keys and model choices are stored separately for each provider in the local app user data directory. Switching providers reloads that provider's own saved key and model.
 
