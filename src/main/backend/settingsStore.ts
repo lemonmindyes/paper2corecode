@@ -34,6 +34,10 @@ export const PROVIDER_SETTINGS: Record<string, { defaultModel: string; models: s
     defaultModel: 'glm-5.1',
     models: ['glm-5.1', 'glm-5', 'glm-5-turbo'],
   },
+  mimo: {
+    defaultModel: 'mimo-v2.5-pro',
+    models: ['mimo-v2.5-pro', 'mimo-v2-pro', 'mimo-v2.5'],
+  },
 }
 
 export interface ActiveSettings {

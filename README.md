@@ -9,7 +9,7 @@ It is designed for researchers, engineers, and students who want to quickly unde
 ## What It Does ✨
 
 - 📄 Analyze academic paper PDFs.
-- 🧠 Generate structured paper summaries with DeepSeek / Jiekou / MiniMax / GLM.
+- 🧠 Generate structured paper summaries with DeepSeek / Jiekou / MiniMax / GLM / Xiaomi MiMo.
 - 🧮 Render Markdown, tables, and LaTeX formulas clearly.
 - 💻 Decide whether the paper needs core code.
 - 🧭 Plan a minimal core-code blueprint before writing files.
@@ -19,7 +19,7 @@ It is designed for researchers, engineers, and students who want to quickly unde
 
 ## Core Workflow 🚀
 
-1. Select a provider (DeepSeek / Jiekou / MiniMax / GLM) and enter your API key in the sidebar.
+1. Select a provider (DeepSeek / Jiekou / MiniMax / GLM / Xiaomi MiMo) and enter your API key in the sidebar.
 2. Choose a model.
 3. Select a paper PDF.
 4. Start analysis.
@@ -50,6 +50,7 @@ Paper2CoreCode supports multiple OpenAI-compatible model providers:
 - Jiekou: Claude, Gemini 3.1 preview, and GPT 5.5 models that work with the current chat completions endpoint.
 - MiniMax: `MiniMax-M2.7`, `MiniMax-M2.7-highspeed`, `MiniMax-M2.5`, `MiniMax-M2.5-highspeed`.
 - GLM: `glm-5.1`, `glm-5`, `glm-5-turbo`.
+- Xiaomi MiMo: `mimo-v2.5-pro`, `mimo-v2-pro`, `mimo-v2.5`.
 
 API keys and model choices are stored separately for each provider in the local app user data directory. Switching providers reloads that provider's own saved key and model.
 
@@ -65,7 +66,7 @@ Version tags like `v0.1.3` trigger the release workflow, which builds platform p
 
 - Electron + TypeScript
 - React + Vite
-- DeepSeek / Jiekou / MiniMax / GLM APIs (OpenAI-compatible)
+- DeepSeek / Jiekou / MiniMax / GLM / Xiaomi MiMo APIs (OpenAI-compatible)
 - `pdf-parse`
 - `react-markdown` + KaTeX
 - `electron-builder`

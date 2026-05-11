@@ -45,6 +45,15 @@ const PROVIDERS = [
       { value: 'glm-5-turbo', label: 'GLM 5 Turbo' },
     ],
   },
+  {
+    value: 'mimo',
+    label: 'Xiaomi MiMo',
+    models: [
+      { value: 'mimo-v2.5-pro', label: 'MiMo v2.5 Pro' },
+      { value: 'mimo-v2-pro', label: 'MiMo v2 Pro' },
+      { value: 'mimo-v2.5', label: 'MiMo v2.5' },
+    ],
+  },
 ]
 
 const sectionStyle: React.CSSProperties = {

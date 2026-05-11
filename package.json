@@ -1,7 +1,7 @@
 {
   "name": "paper2corecode",
   "version": "0.1.3",
-  "description": "Desktop app to analyze papers and extract core code with DeepSeek / Jiekou / MiniMax / GLM",
+  "description": "Desktop app to analyze papers and extract core code with DeepSeek / Jiekou / MiniMax / GLM / Xiaomi MiMo",
   "author": {
     "name": "lemonmindyes",
     "email": "lemonmindyes@users.noreply.github.com"

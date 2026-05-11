@@ -18,11 +18,22 @@ interface GlmModelConfig {
   thinking?: { type: 'enabled' }
 }
 
+interface MimoModelConfig {
+  maxTokens?: number
+  tokenParam?: 'max_tokens' | 'max_completion_tokens'
+  temperature?: number
+  topP?: number
+  frequencyPenalty?: number
+  presencePenalty?: number
+  stop?: null
+}
+
 const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   deepseek: { baseURL: 'https://api.deepseek.com/v1' },
   jiekou: { baseURL: 'https://api.jiekou.ai/openai' },
   minimax: { baseURL: 'https://api.minimaxi.com/v1' },
   glm: { baseURL: 'https://open.bigmodel.cn/api/paas/v4' },
+  mimo: { baseURL: 'https://api.xiaomimimo.com/v1' },
 }
 
 const JIEKOU_MODEL_CONFIGS: Record<string, JiekouModelConfig> = {
@@ -46,6 +57,36 @@ const GLM_MODEL_CONFIGS: Record<string, GlmModelConfig> = {
   'glm-5.1': { maxTokens: 65536, temperature: 1.0, thinking: { type: 'enabled' } },
   'glm-5': { maxTokens: 65536, temperature: 1.0, thinking: { type: 'enabled' } },
   'glm-5-turbo': { maxTokens: 65536, temperature: 1.0, thinking: { type: 'enabled' } },
+}
+
+const MIMO_MODEL_CONFIGS: Record<string, MimoModelConfig> = {
+  'mimo-v2.5-pro': {
+    maxTokens: 131072,
+    tokenParam: 'max_completion_tokens',
+    temperature: 1.0,
+    topP: 0.95,
+    frequencyPenalty: 0,
+    presencePenalty: 0,
+    stop: null,
+  },
+  'mimo-v2-pro': {
+    maxTokens: 131072,
+    tokenParam: 'max_completion_tokens',
+    temperature: 1.0,
+    topP: 0.95,
+    frequencyPenalty: 0,
+    presencePenalty: 0,
+    stop: null,
+  },
+  'mimo-v2.5': {
+    maxTokens: 32768,
+    tokenParam: 'max_completion_tokens',
+    temperature: 1.0,
+    topP: 0.95,
+    frequencyPenalty: 0,
+    presencePenalty: 0,
+    stop: null,
+  },
 }
 
 export function loadConfig() {
@@ -75,7 +116,9 @@ export async function callDeepSeek(
       ? JIEKOU_MODEL_CONFIGS[config.model]
       : config.provider === 'glm'
         ? GLM_MODEL_CONFIGS[config.model]
-        : undefined
+        : config.provider === 'mimo'
+          ? MIMO_MODEL_CONFIGS[config.model]
+          : undefined
 
     if (modelCfg && 'unsupportedReason' in modelCfg && modelCfg.unsupportedReason) {
       throw new AppError(
@@ -92,6 +135,10 @@ export async function callDeepSeek(
       max_tokens?: number
       max_completion_tokens?: number
       temperature?: number
+      top_p?: number
+      frequency_penalty?: number
+      presence_penalty?: number
+      stop?: null
       thinking?: { type: string }
     } = {
       model: config.model,
@@ -99,11 +146,10 @@ export async function callDeepSeek(
       stream: true,
     }
 
-    if (modelCfg?.maxTokens) {
-      requestBody.max_tokens = modelCfg.maxTokens
-    }
     if (modelCfg && 'tokenParam' in modelCfg && modelCfg.tokenParam && modelCfg.maxTokens) {
       requestBody[modelCfg.tokenParam] = modelCfg.maxTokens
+    } else if (modelCfg?.maxTokens) {
+      requestBody.max_tokens = modelCfg.maxTokens
     }
 
     if (modelCfg && 'temperature' in modelCfg && modelCfg.temperature !== undefined) {
@@ -112,6 +158,22 @@ export async function callDeepSeek(
 
     if (modelCfg && 'thinking' in modelCfg && modelCfg.thinking) {
       requestBody.thinking = modelCfg.thinking
+    }
+
+    if (modelCfg && 'topP' in modelCfg && modelCfg.topP !== undefined) {
+      requestBody.top_p = modelCfg.topP
+    }
+
+    if (modelCfg && 'frequencyPenalty' in modelCfg && modelCfg.frequencyPenalty !== undefined) {
+      requestBody.frequency_penalty = modelCfg.frequencyPenalty
+    }
+
+    if (modelCfg && 'presencePenalty' in modelCfg && modelCfg.presencePenalty !== undefined) {
+      requestBody.presence_penalty = modelCfg.presencePenalty
+    }
+
+    if (modelCfg && 'stop' in modelCfg && modelCfg.stop === null) {
+      requestBody.stop = null
     }
 
     const response = await fetch(`${providerCfg.baseURL}/chat/completions`, {
