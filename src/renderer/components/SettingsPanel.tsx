@@ -54,6 +54,14 @@ const PROVIDERS = [
       { value: 'mimo-v2.5', label: 'MiMo v2.5' },
     ],
   },
+  {
+    value: 'kimi',
+    label: 'Kimi',
+    models: [
+      { value: 'kimi-k2.6', label: 'Kimi K2.6' },
+      { value: 'kimi-k2.5', label: 'Kimi K2.5' },
+    ],
+  },
 ]
 
 const sectionStyle: React.CSSProperties = {

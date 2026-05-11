@@ -38,6 +38,10 @@ export const PROVIDER_SETTINGS: Record<string, { defaultModel: string; models: s
     defaultModel: 'mimo-v2.5-pro',
     models: ['mimo-v2.5-pro', 'mimo-v2-pro', 'mimo-v2.5'],
   },
+  kimi: {
+    defaultModel: 'kimi-k2.6',
+    models: ['kimi-k2.6', 'kimi-k2.5'],
+  },
 }
 
 export interface ActiveSettings {

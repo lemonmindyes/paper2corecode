@@ -9,7 +9,7 @@ Paper2CoreCode 是一款桌面端论文阅读与最小核心代码生成工具�
 ## 它能做什么 ✨
 
 - 📄 分析学术论文 PDF。
-- 🧠 使用 DeepSeek / Jiekou / MiniMax / GLM / Xiaomi MiMo 生成结构化论文总结。
+- 🧠 使用 DeepSeek / Jiekou / MiniMax / GLM / Xiaomi MiMo / Kimi 生成结构化论文总结。
 - 🧮 清晰渲染 Markdown、表格和 LaTeX 公式。
 - 💻 判断论文是否需要生成核心代码。
 - 🧭 在写入文件前规划最小核心代码蓝图。
@@ -19,7 +19,7 @@ Paper2CoreCode 是一款桌面端论文阅读与最小核心代码生成工具�
 
 ## 核心流程 🚀
 
-1. 在侧边栏选择模型供应商（DeepSeek / Jiekou / MiniMax / GLM / Xiaomi MiMo）并配置 API Key。
+1. 在侧边栏选择模型供应商（DeepSeek / Jiekou / MiniMax / GLM / Xiaomi MiMo / Kimi）并配置 API Key。
 2. 选择模型。
 3. 选择论文 PDF。
 4. 开始分析。
@@ -51,6 +51,7 @@ Paper2CoreCode 支持多个 OpenAI-compatible 模型供应商：
 - MiniMax：`MiniMax-M2.7`、`MiniMax-M2.7-highspeed`、`MiniMax-M2.5`、`MiniMax-M2.5-highspeed`。
 - GLM：`glm-5.1`、`glm-5`、`glm-5-turbo`。
 - Xiaomi MiMo：`mimo-v2.5-pro`、`mimo-v2-pro`、`mimo-v2.5`。
+- Kimi：`kimi-k2.6`、`kimi-k2.5`。
 
 API Key 和模型选择会按供应商分别保存在本机应用用户数据目录中。切换供应商时，应用会重新加载该供应商自己的 API Key 和模型。
 
@@ -66,7 +67,7 @@ Pull Request 会通过 GitHub Actions 在 Windows、macOS 和 Linux 上运行 `n
 
 - Electron + TypeScript
 - React + Vite
-- DeepSeek / Jiekou / MiniMax / GLM / Xiaomi MiMo APIs（OpenAI-compatible）
+- DeepSeek / Jiekou / MiniMax / GLM / Xiaomi MiMo / Kimi APIs（OpenAI-compatible）
 - `pdf-parse`
 - `react-markdown` + KaTeX
 - `electron-builder`
