@@ -98,9 +98,7 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
   align-items: stretch;
-  gap: 16px;
   padding: 18px;
   overflow: hidden;
 }
@@ -115,24 +113,88 @@ body {
 }
 
 .main-content {
-  flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  min-height: 0;
+  display: grid;
   overflow: hidden;
 }
 
 .workspace {
-  flex-shrink: 0;
-}
-
-.result-viewer {
-  flex: 1;
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.result-viewer {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.resize-handle {
+  position: relative;
+  flex-shrink: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  background: var(--color-border-strong);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.resize-handle:hover::after,
+.is-resizing-column .resize-handle-vertical::after,
+.is-resizing-row .resize-handle-horizontal::after {
+  opacity: 1;
+  background: var(--color-accent);
+}
+
+.resize-handle-vertical {
+  cursor: col-resize;
+}
+
+.resize-handle-vertical::after {
+  top: 8px;
+  bottom: 8px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+}
+
+.resize-handle-horizontal {
+  cursor: row-resize;
+}
+
+.resize-handle-horizontal::after {
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.is-resizing-layout {
+  user-select: none;
+}
+
+.is-resizing-column {
+  cursor: col-resize;
+}
+
+.is-resizing-row {
+  cursor: row-resize;
+}
+
+.is-resizing-layout * {
+  user-select: none !important;
 }
 
 .markdown-table-frame {

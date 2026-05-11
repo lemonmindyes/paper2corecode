@@ -19,6 +19,9 @@ const cardStyle: React.CSSProperties = {
   background: 'var(--color-surface)',
   borderRadius: 'var(--radius-md)',
   padding: 18,
+  height: '100%',
+  minHeight: 0,
+  overflow: 'hidden',
   display: 'flex',
   flexDirection: 'column',
   gap: 14,
@@ -33,6 +36,8 @@ const dropBase: React.CSSProperties = {
   border: '2px dashed var(--color-border)',
   background: 'transparent',
   minHeight: 108,
+  flex: 1,
+  overflow: 'auto',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -181,7 +186,7 @@ export default function PDFPanel({ pdfPath, analyzing, progress, apiKeyConfigure
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexShrink: 0 }}>
         {!apiKeyConfigured && pdfPath && (
           <span style={{ fontSize: 13, color: 'var(--color-warning)', marginRight: 'auto' }}>
             {t(language, 'upload.setApiKeyHint')}
