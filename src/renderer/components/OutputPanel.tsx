@@ -12,13 +12,16 @@ interface OutputPanelProps {
   analyzing: boolean
   streamingSummary: string
   error: string | null
+  analysisStatus: AnalysisStatus
+  elapsedTime: number
+  tokenUsage: TokenUsage | null
   apiKeyConfigured: boolean
   pdfPath: string | null
   language: Language
   onDownloadCode: () => void
 }
 
-export default function OutputPanel({ result, analyzing, streamingSummary, error, apiKeyConfigured, pdfPath, language, onDownloadCode }: OutputPanelProps) {
+export default function OutputPanel({ result, analyzing, streamingSummary, error, analysisStatus, elapsedTime, tokenUsage, apiKeyConfigured, pdfPath, language, onDownloadCode }: OutputPanelProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const shouldStickToBottomRef = useRef(true)
 
@@ -102,6 +105,13 @@ export default function OutputPanel({ result, analyzing, streamingSummary, error
         )}
       </div>
 
+      <AnalysisStatusBar
+        language={language}
+        status={analysisStatus}
+        elapsedTime={elapsedTime}
+        tokenUsage={tokenUsage}
+      />
+
       <div
         ref={scrollContainerRef}
         onScroll={handleResultScroll}
@@ -153,6 +163,107 @@ export default function OutputPanel({ result, analyzing, streamingSummary, error
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function formatElapsedTime(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, totalSeconds)
+  const hours = Math.floor(safeSeconds / 3600)
+  const minutes = Math.floor((safeSeconds % 3600) / 60)
+  const seconds = safeSeconds % 60
+  const mm = String(minutes).padStart(2, '0')
+  const ss = String(seconds).padStart(2, '0')
+
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${mm}:${ss}`
+  }
+
+  return `${mm}:${ss}`
+}
+
+function formatTokenCount(value: number | undefined): string {
+  return value === undefined ? '-' : value.toLocaleString()
+}
+
+function getStatusLabel(language: Language, status: AnalysisStatus): string {
+  const statusKey = status === 'idle'
+    ? 'result.statusIdle'
+    : status === 'parsing'
+      ? 'result.statusParsing'
+      : status === 'analyzing'
+        ? 'result.statusAnalyzing'
+        : status === 'success'
+          ? 'result.statusSuccess'
+          : 'result.statusError'
+
+  return t(language, statusKey)
+}
+
+function getTokenTotal(usage: TokenUsage | null): number | undefined {
+  if (!usage) return undefined
+  if (usage.totalTokens !== undefined) return usage.totalTokens
+  if (usage.promptTokens !== undefined && usage.completionTokens !== undefined) {
+    return usage.promptTokens + usage.completionTokens
+  }
+  return undefined
+}
+
+function AnalysisStatusBar({ language, status, elapsedTime, tokenUsage }: {
+  language: Language
+  status: AnalysisStatus
+  elapsedTime: number
+  tokenUsage: TokenUsage | null
+}) {
+  const totalTokens = getTokenTotal(tokenUsage)
+
+  return (
+    <div style={{
+      flexShrink: 0,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      flexWrap: 'wrap',
+      padding: '8px 20px 8px 22px',
+      borderBottom: '1px solid var(--color-border)',
+      background: 'var(--color-surface-elevated)',
+      color: 'var(--color-secondary)',
+      fontSize: 13,
+    }}>
+      <span style={{ fontWeight: 500 }}>
+        {t(language, 'result.status')}: {getStatusLabel(language, status)}
+      </span>
+      <span style={{ color: 'var(--color-muted)' }}>|</span>
+      <span>
+        {t(language, 'result.elapsed')}: <span style={{ fontFamily: 'var(--font-mono)' }}>{formatElapsedTime(elapsedTime)}</span>
+      </span>
+      <span style={{ color: 'var(--color-muted)' }}>|</span>
+      {tokenUsage ? (
+        <details style={{ position: 'relative' }}>
+          <summary style={{ cursor: 'pointer', listStyle: 'none' }}>
+            {t(language, 'result.tokenTotal')}: {formatTokenCount(totalTokens)}
+          </summary>
+          <div style={{
+            position: 'absolute',
+            top: 24,
+            left: 0,
+            zIndex: 5,
+            minWidth: 210,
+            padding: '10px 12px',
+            border: '1px solid var(--color-border)',
+            borderRadius: 8,
+            background: 'var(--color-surface)',
+            boxShadow: 'var(--shadow-md)',
+            lineHeight: 1.8,
+          }}>
+            <div>{t(language, 'result.promptTokens')}: {formatTokenCount(tokenUsage.promptTokens)}</div>
+            <div>{t(language, 'result.completionTokens')}: {formatTokenCount(tokenUsage.completionTokens)}</div>
+            <div>{t(language, 'result.totalTokens')}: {formatTokenCount(totalTokens)}</div>
+          </div>
+        </details>
+      ) : (
+        <span>{t(language, 'result.tokenTotal')}: {t(language, 'result.tokenUnavailable')}</span>
+      )}
     </div>
   )
 }

@@ -11,6 +11,11 @@ export default function App() {
   const [result, setResult] = useState<{ summary: string; hasCoreCode: boolean } | null>(null)
   const [streamingSummary, setStreamingSummary] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus>('idle')
+  const [elapsedTime, setElapsedTime] = useState(0)
+  const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [finishedAt, setFinishedAt] = useState<number | null>(null)
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null)
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false)
   const [language, setLanguage] = useState<Language>('zh-CN')
   const [showCompletionDialog, setShowCompletionDialog] = useState(false)
@@ -24,6 +29,27 @@ export default function App() {
     return () => cleanupRef.current?.()
   }, [])
 
+  useEffect(() => {
+    if (startedAt === null || finishedAt !== null) return
+
+    const updateElapsed = () => {
+      setElapsedTime(Math.floor((Date.now() - startedAt) / 1000))
+    }
+
+    updateElapsed()
+    const timer = window.setInterval(updateElapsed, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [startedAt, finishedAt])
+
+  const resetAnalysisMeta = () => {
+    setAnalysisStatus('idle')
+    setElapsedTime(0)
+    setStartedAt(null)
+    setFinishedAt(null)
+    setTokenUsage(null)
+  }
+
   const handleSelectPDF = async () => {
     const path = await window.electronAPI.selectPDF()
     if (path) {
@@ -31,6 +57,7 @@ export default function App() {
       setResult(null)
       setStreamingSummary('')
       setError(null)
+      resetAnalysisMeta()
       setShowCompletionDialog(false)
     }
   }
@@ -40,47 +67,78 @@ export default function App() {
     setResult(null)
     setStreamingSummary('')
     setError(null)
+    resetAnalysisMeta()
     setShowCompletionDialog(false)
   }
 
   const handleAnalyze = async () => {
     if (!pdfPath) return
+    const started = Date.now()
 
     setAnalyzing(true)
     setProgress([])
     setResult(null)
     setStreamingSummary('')
     setError(null)
+    setAnalysisStatus('parsing')
+    setElapsedTime(0)
+    setStartedAt(started)
+    setFinishedAt(null)
+    setTokenUsage(null)
     setShowCompletionDialog(false)
 
-    const removeListener = window.electronAPI.onAnalysisProgress((p) => {
+    let removeListener: (() => void) | null = window.electronAPI.onAnalysisProgress((p) => {
+      if (p.stage === 'parsing') {
+        setAnalysisStatus('parsing')
+      } else if (p.stage === 'summarizing' || p.stage === 'generating_code') {
+        setAnalysisStatus('analyzing')
+      }
+
       setProgress((prev) => {
         const exists = prev.some((x) => x.stage === p.stage && x.message === p.message)
         return exists ? prev : [...prev, p]
       })
     })
-    const removeSummaryListener = window.electronAPI.onSummaryChunk((chunk) => {
+    let removeSummaryListener: (() => void) | null = window.electronAPI.onSummaryChunk((chunk) => {
       setStreamingSummary((prev) => prev + chunk)
     })
     cleanupRef.current = () => {
-      removeListener()
-      removeSummaryListener()
+      removeListener?.()
+      removeSummaryListener?.()
     }
 
-    const res = await window.electronAPI.analyzePaper(pdfPath)
-    removeListener()
-    removeSummaryListener()
-    cleanupRef.current = null
+    try {
+      const res = await window.electronAPI.analyzePaper(pdfPath)
+      const ended = Date.now()
+      setFinishedAt(ended)
+      setElapsedTime(Math.floor((ended - started) / 1000))
+      setAnalyzing(false)
 
-    setAnalyzing(false)
-
-    if (res.ok) {
-      setResult({ summary: res.summary, hasCoreCode: res.hasCoreCode })
-      setStreamingSummary(res.summary)
-      setShowCompletionDialog(true)
-    } else {
-      const detail = res.error.detail?.trim()
-      setError(detail ? `${res.error.message}\n\n${detail}` : res.error.message)
+      if (res.ok) {
+        setAnalysisStatus('success')
+        setResult(res.result)
+        setStreamingSummary(res.result.summary)
+        setTokenUsage(res.usage ?? null)
+        setShowCompletionDialog(true)
+      } else {
+        setAnalysisStatus('error')
+        setTokenUsage(res.usage ?? null)
+        const detail = res.error.detail?.trim()
+        setError(detail ? `${res.error.message}\n\n${detail}` : res.error.message)
+      }
+    } catch (err) {
+      const ended = Date.now()
+      setFinishedAt(ended)
+      setElapsedTime(Math.floor((ended - started) / 1000))
+      setAnalyzing(false)
+      setAnalysisStatus('error')
+      setError((err as Error).message)
+    } finally {
+      removeListener?.()
+      removeSummaryListener?.()
+      removeListener = null
+      removeSummaryListener = null
+      cleanupRef.current = null
     }
   }
 
@@ -89,6 +147,10 @@ export default function App() {
     if (!res.ok) {
       setError(res.error)
     }
+  }
+
+  const handleCancelAnalyze = async () => {
+    await window.electronAPI.cancelAnalysis()
   }
 
   const handleLanguageChange = async (lang: Language) => {
@@ -154,6 +216,7 @@ export default function App() {
               onSelectPDF={handleSelectPDF}
               onSetPDFPath={handleSetPDFPath}
               onAnalyze={handleAnalyze}
+              onCancelAnalyze={handleCancelAnalyze}
             />
           </div>
 
@@ -163,6 +226,9 @@ export default function App() {
               analyzing={analyzing}
               streamingSummary={streamingSummary}
               error={error}
+              analysisStatus={analysisStatus}
+              elapsedTime={elapsedTime}
+              tokenUsage={tokenUsage}
               apiKeyConfigured={apiKeyConfigured}
               pdfPath={pdfPath}
               language={language}

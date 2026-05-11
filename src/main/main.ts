@@ -3,6 +3,7 @@ import * as path from 'path'
 import { getActiveSettings, saveSettingsPatch, SettingsPatch } from './backend/settingsStore'
 
 let mainWindow: BrowserWindow | null = null
+let currentAnalysisController: AbortController | null = null
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -54,6 +55,9 @@ ipcMain.handle('get-settings', async () => {
 
 ipcMain.handle('analyze-paper', async (_event, pdfPath: string) => {
   if (!mainWindow) return { ok: false, error: { code: 'NO_WINDOW', message: 'Window not available' } }
+  currentAnalysisController?.abort()
+  const controller = new AbortController()
+  currentAnalysisController = controller
 
   const sendProgress = (progress: { stage: string; message: string }) => {
     mainWindow?.webContents.send('analysis-progress', progress)
@@ -64,7 +68,19 @@ ipcMain.handle('analyze-paper', async (_event, pdfPath: string) => {
   }
 
   const { analyzePaper } = await import('./backend/paperAnalyzer')
-  return analyzePaper(pdfPath, sendProgress, sendSummaryChunk)
+  try {
+    return await analyzePaper(pdfPath, sendProgress, sendSummaryChunk, controller.signal)
+  } finally {
+    if (currentAnalysisController === controller) {
+      currentAnalysisController = null
+    }
+  }
+})
+
+ipcMain.handle('cancel-analysis', async () => {
+  currentAnalysisController?.abort()
+  currentAnalysisController = null
+  return true
 })
 
 ipcMain.handle('download-core-code', async () => {
