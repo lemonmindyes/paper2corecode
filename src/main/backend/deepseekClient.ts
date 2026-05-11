@@ -34,6 +34,7 @@ const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   minimax: { baseURL: 'https://api.minimaxi.com/v1' },
   glm: { baseURL: 'https://open.bigmodel.cn/api/paas/v4' },
   mimo: { baseURL: 'https://api.xiaomimimo.com/v1' },
+  kimi: { baseURL: 'https://api.moonshot.cn/v1' },
 }
 
 const JIEKOU_MODEL_CONFIGS: Record<string, JiekouModelConfig> = {
