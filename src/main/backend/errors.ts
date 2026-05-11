@@ -1,3 +1,5 @@
+import { TokenUsage } from './tokenUsage'
+
 export const ErrorCodes = {
   PDF_NOT_FOUND: 'PDF_NOT_FOUND',
   PDF_INVALID: 'PDF_INVALID',
@@ -10,6 +12,7 @@ export const ErrorCodes = {
   API_NETWORK_ERROR: 'API_NETWORK_ERROR',
   API_RESPONSE_INVALID: 'API_RESPONSE_INVALID',
   ANALYSIS_FAILED: 'ANALYSIS_FAILED',
+  ANALYSIS_CANCELLED: 'ANALYSIS_CANCELLED',
   NO_CODE_CACHE: 'NO_CODE_CACHE',
   EXPORT_FAILED: 'EXPORT_FAILED',
 } as const
@@ -34,12 +37,18 @@ export type AnalysisProgress =
 export type AnalysisResult =
   | {
       ok: true
-      summary: string
-      hasCoreCode: boolean
+      result: {
+        summary: string
+        hasCoreCode: boolean
+      }
+      usage?: TokenUsage
+      rawUsage?: unknown
     }
   | {
       ok: false
       error: { code: string; message: string; detail?: string }
+      usage?: TokenUsage
+      rawUsage?: unknown
     }
 
 export type ExportResult =

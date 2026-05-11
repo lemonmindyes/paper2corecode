@@ -4,6 +4,7 @@ import { buildCombinedAnalysisPrompt } from './promptBuilder'
 import { cacheCodeBundle, clearCache, CodeBlueprint, GeneratedFile } from './codeCache'
 import { AnalysisProgress, AnalysisResult, AppError, ErrorCodes } from './errors'
 import { getActiveSettings } from './settingsStore'
+import { TokenUsage } from './tokenUsage'
 import { BLUEPRINT_START, BLUEPRINT_END, extractJsonObject, parseCodeBlueprint, validateFilesAgainstBlueprint, validateGeneratedFilePath } from './codeBlueprint'
 
 const SUMMARY_START = '<P2CC_SUMMARY>'
@@ -89,7 +90,8 @@ export function parseCodeDecision(raw: string): { needed: boolean; reason?: stri
 export async function analyzePaper(
   pdfPath: string,
   onProgress: (progress: AnalysisProgress) => void,
-  onSummaryChunk?: (chunk: string) => void
+  onSummaryChunk?: (chunk: string) => void,
+  signal?: AbortSignal
 ): Promise<AnalysisResult> {
   let language = 'zh-CN'
   try {
@@ -97,11 +99,20 @@ export async function analyzePaper(
   } catch {}
 
   const msg = (zh: string, en: string) => language === 'en-US' ? en : zh
+  let usage: TokenUsage | undefined
+  let rawUsage: unknown
+  const throwIfCancelled = () => {
+    if (signal?.aborted) {
+      throw new AppError(ErrorCodes.ANALYSIS_CANCELLED, msg('分析已取消', 'Analysis was cancelled'))
+    }
+  }
 
   try {
+    throwIfCancelled()
     clearCache()
     onProgress({ stage: 'parsing', message: msg('读取 PDF 文件...', 'Reading PDF file...') })
     const { text, pageCount } = await parsePDF(pdfPath)
+    throwIfCancelled()
     onProgress({ stage: 'parsing', message: msg(`PDF 解析完成 (${pageCount} 页)`, `PDF parsed (${pageCount} pages)`) })
 
     onProgress({ stage: 'summarizing', message: msg('正在分析论文结构并生成总结...', 'Analyzing paper structure and generating summary...') })
@@ -113,7 +124,7 @@ export async function analyzePaper(
     let blueprintProgressSent = false
     let bundleProgressSent = false
 
-    await callDeepSeek(
+    const llmResult = await callDeepSeek(
       [
         { role: 'system', content: analysisPrompt.system },
         { role: 'user', content: analysisPrompt.user },
@@ -154,8 +165,11 @@ export async function analyzePaper(
           bundleProgressSent = true
           onProgress({ stage: 'generating_code', message: msg('正在按蓝图生成核心代码文件...', 'Generating core code files from blueprint...') })
         }
-      }
+      },
+      signal
     )
+    usage = llmResult.usage
+    rawUsage = llmResult.rawUsage
 
     const cleanedSummary = extractTaggedContent(rawOutput, SUMMARY_START, SUMMARY_END, '模型返回缺少论文总结区块')
     const decisionContent = extractTaggedContent(rawOutput, DECISION_START, DECISION_END, '模型返回缺少代码生成决策')
@@ -190,19 +204,27 @@ export async function analyzePaper(
 
     return {
       ok: true,
-      summary: cleanedSummary.trim(),
-      hasCoreCode,
+      result: {
+        summary: cleanedSummary.trim(),
+        hasCoreCode,
+      },
+      usage,
+      rawUsage,
     }
   } catch (err) {
     if (err instanceof AppError) {
       return {
         ok: false,
         error: { code: err.code, message: err.message, detail: err.detail },
+        usage,
+        rawUsage,
       }
     }
     return {
       ok: false,
       error: { code: ErrorCodes.ANALYSIS_FAILED, message: msg('分析过程中发生未知错误', 'An unknown error occurred during analysis'), detail: (err as Error).message },
+      usage,
+      rawUsage,
     }
   }
 }

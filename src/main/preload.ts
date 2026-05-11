@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('save-settings', settings),
   getSettings: () => ipcRenderer.invoke('get-settings'),
   analyzePaper: (pdfPath: string) => ipcRenderer.invoke('analyze-paper', pdfPath),
+  cancelAnalysis: () => ipcRenderer.invoke('cancel-analysis'),
   downloadCoreCode: () => ipcRenderer.invoke('download-core-code'),
   onAnalysisProgress: (callback: (progress: { stage: string; message: string }) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, progress: { stage: string; message: string }) => callback(progress)

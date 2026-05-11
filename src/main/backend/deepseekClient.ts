@@ -1,8 +1,16 @@
 import { AppError, ErrorCodes } from './errors'
 import { getActiveSettings } from './settingsStore'
+import { normalizeUsage, TokenUsage } from './tokenUsage'
 
 interface ProviderConfig {
   baseURL: string
+  includeStreamUsage?: boolean
+}
+
+export interface ChatCompletionResult {
+  content: string
+  usage?: TokenUsage
+  rawUsage?: unknown
 }
 
 interface JiekouModelConfig {
@@ -29,12 +37,12 @@ interface MimoModelConfig {
 }
 
 const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
-  deepseek: { baseURL: 'https://api.deepseek.com/v1' },
+  deepseek: { baseURL: 'https://api.deepseek.com/v1', includeStreamUsage: true },
   jiekou: { baseURL: 'https://api.jiekou.ai/openai' },
   minimax: { baseURL: 'https://api.minimaxi.com/v1' },
   glm: { baseURL: 'https://open.bigmodel.cn/api/paas/v4' },
   mimo: { baseURL: 'https://api.xiaomimimo.com/v1' },
-  kimi: { baseURL: 'https://api.moonshot.cn/v1' },
+  kimi: { baseURL: 'https://api.moonshot.cn/v1', includeStreamUsage: true },
 }
 
 const JIEKOU_MODEL_CONFIGS: Record<string, JiekouModelConfig> = {
@@ -100,8 +108,9 @@ export function loadConfig() {
 
 export async function callDeepSeek(
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
-  onUpdate?: (chunk: string) => void
-): Promise<string> {
+  onUpdate?: (chunk: string) => void,
+  signal?: AbortSignal
+): Promise<ChatCompletionResult> {
   const config = loadConfig()
   const providerCfg = PROVIDER_CONFIGS[config.provider]
 
@@ -110,7 +119,17 @@ export async function callDeepSeek(
   }
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 120_000)
+  let timedOut = false
+  const abortFromSignal = () => controller.abort()
+  if (signal?.aborted) {
+    controller.abort()
+  } else {
+    signal?.addEventListener('abort', abortFromSignal, { once: true })
+  }
+  const timeout = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, 120_000)
 
   try {
     const modelCfg = config.provider === 'jiekou'
@@ -141,10 +160,15 @@ export async function callDeepSeek(
       presence_penalty?: number
       stop?: null
       thinking?: { type: string }
+      stream_options?: { include_usage: boolean }
     } = {
       model: config.model,
       messages,
       stream: true,
+    }
+
+    if (providerCfg.includeStreamUsage) {
+      requestBody.stream_options = { include_usage: true }
     }
 
     if (modelCfg && 'tokenParam' in modelCfg && modelCfg.tokenParam && modelCfg.maxTokens) {
@@ -210,6 +234,8 @@ export async function callDeepSeek(
     }
 
     let result = ''
+    let usage: TokenUsage | undefined
+    let rawUsage: unknown
     const decoder = new TextDecoder()
     let buffer = ''
 
@@ -229,6 +255,11 @@ export async function callDeepSeek(
 
         try {
           const json = JSON.parse(payload)
+          if (json.usage) {
+            rawUsage = json.usage
+            usage = normalizeUsage(json.usage) ?? usage
+          }
+
           const content = json.choices?.[0]?.delta?.content || ''
           if (content) {
             result += content
@@ -244,11 +275,16 @@ export async function callDeepSeek(
       throw new AppError(ErrorCodes.API_RESPONSE_INVALID, 'API returned empty response')
     }
 
-    return result
+    signal?.removeEventListener('abort', abortFromSignal)
+    return { content: result, usage, rawUsage }
   } catch (err) {
     clearTimeout(timeout)
+    signal?.removeEventListener('abort', abortFromSignal)
     if (err instanceof AppError) throw err
     if ((err as Error).name === 'AbortError') {
+      if (!timedOut && signal?.aborted) {
+        throw new AppError(ErrorCodes.ANALYSIS_CANCELLED, 'Analysis was cancelled by the user.')
+      }
       throw new AppError(ErrorCodes.API_TIMEOUT, 'Request timed out after 120 seconds. The paper may be too long.')
     }
     throw new AppError(

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileText, Upload, Play, RefreshCw, LoaderCircle } from 'lucide-react'
+import { FileText, Upload, Play, RefreshCw, LoaderCircle, Square } from 'lucide-react'
 import { t, Language } from '../i18n'
 
 interface PDFPanelProps {
@@ -12,6 +12,7 @@ interface PDFPanelProps {
   onSelectPDF: () => void
   onSetPDFPath: (path: string) => void
   onAnalyze: () => void
+  onCancelAnalyze: () => void
 }
 
 const cardStyle: React.CSSProperties = {
@@ -39,7 +40,7 @@ const dropBase: React.CSSProperties = {
   gap: 8,
 }
 
-export default function PDFPanel({ pdfPath, analyzing, progress, apiKeyConfigured, hasResult, language, onSelectPDF, onSetPDFPath, onAnalyze }: PDFPanelProps) {
+export default function PDFPanel({ pdfPath, analyzing, progress, apiKeyConfigured, hasResult, language, onSelectPDF, onSetPDFPath, onAnalyze, onCancelAnalyze }: PDFPanelProps) {
   const [dragging, setDragging] = useState(false)
 
   const fileName = pdfPath
@@ -92,10 +93,10 @@ export default function PDFPanel({ pdfPath, analyzing, progress, apiKeyConfigure
     ...(analyzing ? { cursor: 'not-allowed' } : {}),
   }
 
-  const btnDisabled = analyzing || !pdfPath || !apiKeyConfigured
+  const btnDisabled = !analyzing && (!pdfPath || !apiKeyConfigured)
 
   const btnText = analyzing
-    ? t(language, 'upload.analyzing')
+    ? t(language, 'upload.cancelAnalysis')
     : !pdfPath
       ? t(language, 'upload.startAnalysis')
       : !apiKeyConfigured
@@ -206,14 +207,14 @@ export default function PDFPanel({ pdfPath, analyzing, progress, apiKeyConfigure
           {t(language, 'upload.selectPDF')}
         </button>
         <button
-          onClick={onAnalyze}
+          onClick={analyzing ? onCancelAnalyze : onAnalyze}
           disabled={btnDisabled}
           style={{
             padding: '9px 22px',
             fontSize: 14,
             fontWeight: 600,
             color: '#fff',
-            background: analyzing ? 'var(--color-secondary)' : 'var(--color-accent)',
+            background: analyzing ? 'var(--color-error)' : 'var(--color-accent)',
             borderRadius: 'var(--radius-sm)',
             opacity: btnDisabled ? 0.5 : 1,
             cursor: btnDisabled ? 'not-allowed' : 'pointer',
@@ -223,7 +224,7 @@ export default function PDFPanel({ pdfPath, analyzing, progress, apiKeyConfigure
           }}
         >
           {analyzing ? (
-            <LoaderCircle size={16} style={{ animation: 'spin 1s linear infinite' }} />
+            <Square size={14} />
           ) : hasResult ? (
             <RefreshCw size={16} />
           ) : (
