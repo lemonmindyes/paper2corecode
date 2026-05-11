@@ -4,6 +4,42 @@ import SettingsPanel from './components/SettingsPanel'
 import PDFPanel from './components/PDFPanel'
 import OutputPanel from './components/OutputPanel'
 
+const SIDEBAR_WIDTH_KEY = 'paper2corecode.sidebarWidth'
+const UPLOAD_HEIGHT_KEY = 'paper2corecode.uploadHeight'
+const SIDEBAR_DEFAULT_WIDTH = 280
+const SIDEBAR_MIN_WIDTH = 220
+const SIDEBAR_MAX_WIDTH = 420
+const MAIN_MIN_WIDTH = 520
+const UPLOAD_DEFAULT_HEIGHT = 260
+const UPLOAD_MIN_HEIGHT = 230
+const UPLOAD_MAX_HEIGHT = 420
+const RESULT_MIN_HEIGHT = 260
+const RESIZE_HANDLE_SIZE = 16
+
+function clamp(value: number, min: number, max: number): number {
+  if (max < min) return min
+  return Math.min(Math.max(value, min), max)
+}
+
+function readStoredNumber(key: string, fallback: number): number {
+  let stored: string | null = null
+  try {
+    stored = window.localStorage.getItem(key)
+  } catch {
+    return fallback
+  }
+
+  if (!stored) return fallback
+
+  const parsed = Number(stored)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function getContentWidth(element: HTMLElement): number {
+  const styles = window.getComputedStyle(element)
+  return element.clientWidth - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight)
+}
+
 export default function App() {
   const [pdfPath, setPdfPath] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
@@ -19,7 +55,19 @@ export default function App() {
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false)
   const [language, setLanguage] = useState<Language>('zh-CN')
   const [showCompletionDialog, setShowCompletionDialog] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(() => clamp(
+    readStoredNumber(SIDEBAR_WIDTH_KEY, SIDEBAR_DEFAULT_WIDTH),
+    SIDEBAR_MIN_WIDTH,
+    SIDEBAR_MAX_WIDTH
+  ))
+  const [uploadHeight, setUploadHeight] = useState(() => clamp(
+    readStoredNumber(UPLOAD_HEIGHT_KEY, UPLOAD_DEFAULT_HEIGHT),
+    UPLOAD_MIN_HEIGHT,
+    UPLOAD_MAX_HEIGHT
+  ))
   const cleanupRef = useRef<(() => void) | null>(null)
+  const appBodyRef = useRef<HTMLDivElement | null>(null)
+  const mainContentRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     window.electronAPI.getSettings().then((s) => {
@@ -41,6 +89,33 @@ export default function App() {
 
     return () => window.clearInterval(timer)
   }, [startedAt, finishedAt])
+
+  useEffect(() => {
+    const clampLayoutToViewport = () => {
+      const appBody = appBodyRef.current
+      if (appBody) {
+        const maxSidebarWidth = Math.max(
+          SIDEBAR_MIN_WIDTH,
+          Math.min(SIDEBAR_MAX_WIDTH, getContentWidth(appBody) - RESIZE_HANDLE_SIZE - MAIN_MIN_WIDTH)
+        )
+        setSidebarWidth((width) => clamp(width, SIDEBAR_MIN_WIDTH, maxSidebarWidth))
+      }
+
+      const mainContent = mainContentRef.current
+      if (mainContent) {
+        const maxUploadHeight = Math.max(
+          UPLOAD_MIN_HEIGHT,
+          Math.min(UPLOAD_MAX_HEIGHT, mainContent.clientHeight - RESIZE_HANDLE_SIZE - RESULT_MIN_HEIGHT)
+        )
+        setUploadHeight((height) => clamp(height, UPLOAD_MIN_HEIGHT, maxUploadHeight))
+      }
+    }
+
+    clampLayoutToViewport()
+    window.addEventListener('resize', clampLayoutToViewport)
+
+    return () => window.removeEventListener('resize', clampLayoutToViewport)
+  }, [])
 
   const resetAnalysisMeta = () => {
     setAnalysisStatus('idle')
@@ -158,6 +233,78 @@ export default function App() {
     await window.electronAPI.saveSettings({ language: lang })
   }
 
+  const handleSidebarResizeStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    const appBody = appBodyRef.current
+    if (!appBody) return
+
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = sidebarWidth
+    const maxSidebarWidth = Math.max(
+      SIDEBAR_MIN_WIDTH,
+      Math.min(SIDEBAR_MAX_WIDTH, getContentWidth(appBody) - RESIZE_HANDLE_SIZE - MAIN_MIN_WIDTH)
+    )
+
+    document.body.classList.add('is-resizing-layout', 'is-resizing-column')
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const nextWidth = clamp(startWidth + moveEvent.clientX - startX, SIDEBAR_MIN_WIDTH, maxSidebarWidth)
+      setSidebarWidth(nextWidth)
+    }
+
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      const nextWidth = clamp(startWidth + upEvent.clientX - startX, SIDEBAR_MIN_WIDTH, maxSidebarWidth)
+      setSidebarWidth(nextWidth)
+      try {
+        window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(Math.round(nextWidth)))
+      } catch {}
+      document.body.classList.remove('is-resizing-layout', 'is-resizing-column')
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('pointercancel', handlePointerUp)
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    window.addEventListener('pointercancel', handlePointerUp)
+  }
+
+  const handleUploadResizeStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    const mainContent = mainContentRef.current
+    if (!mainContent) return
+
+    event.preventDefault()
+    const startY = event.clientY
+    const startHeight = uploadHeight
+    const maxUploadHeight = Math.max(
+      UPLOAD_MIN_HEIGHT,
+      Math.min(UPLOAD_MAX_HEIGHT, mainContent.clientHeight - RESIZE_HANDLE_SIZE - RESULT_MIN_HEIGHT)
+    )
+
+    document.body.classList.add('is-resizing-layout', 'is-resizing-row')
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const nextHeight = clamp(startHeight + moveEvent.clientY - startY, UPLOAD_MIN_HEIGHT, maxUploadHeight)
+      setUploadHeight(nextHeight)
+    }
+
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      const nextHeight = clamp(startHeight + upEvent.clientY - startY, UPLOAD_MIN_HEIGHT, maxUploadHeight)
+      setUploadHeight(nextHeight)
+      try {
+        window.localStorage.setItem(UPLOAD_HEIGHT_KEY, String(Math.round(nextHeight)))
+      } catch {}
+      document.body.classList.remove('is-resizing-layout', 'is-resizing-row')
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('pointercancel', handlePointerUp)
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    window.addEventListener('pointercancel', handlePointerUp)
+  }
+
   const progressMessages = progress.map((p) => p.message)
 
   return (
@@ -196,7 +343,11 @@ export default function App() {
         </div>
       </header>
 
-      <div className='app-body'>
+      <div
+        ref={appBodyRef}
+        className='app-body'
+        style={{ gridTemplateColumns: `${sidebarWidth}px ${RESIZE_HANDLE_SIZE}px minmax(0, 1fr)` }}
+      >
         <aside className='sidebar'>
           <SettingsPanel
             language={language}
@@ -204,7 +355,19 @@ export default function App() {
           />
         </aside>
 
-        <div className='main-content'>
+        <div
+          className='resize-handle resize-handle-vertical'
+          role='separator'
+          aria-orientation='vertical'
+          aria-label='Resize sidebar'
+          onPointerDown={handleSidebarResizeStart}
+        />
+
+        <div
+          ref={mainContentRef}
+          className='main-content'
+          style={{ gridTemplateRows: `${uploadHeight}px ${RESIZE_HANDLE_SIZE}px minmax(0, 1fr)` }}
+        >
           <div className='workspace'>
             <PDFPanel
               pdfPath={pdfPath}
@@ -219,6 +382,14 @@ export default function App() {
               onCancelAnalyze={handleCancelAnalyze}
             />
           </div>
+
+          <div
+            className='resize-handle resize-handle-horizontal'
+            role='separator'
+            aria-orientation='horizontal'
+            aria-label='Resize upload and summary panels'
+            onPointerDown={handleUploadResizeStart}
+          />
 
           <div className='result-viewer'>
             <OutputPanel
