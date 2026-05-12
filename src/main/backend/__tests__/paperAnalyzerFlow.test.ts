@@ -70,6 +70,7 @@ describe('analyzePaper flow', () => {
       provider: 'deepseek',
       model: 'deepseek-v4-flash',
       language: 'zh-CN',
+      selectedCodeLanguage: 'Python',
     })
     mockedParsePDF.mockResolvedValue({ text: 'paper text', pageCount: 3 })
   })
@@ -93,6 +94,24 @@ describe('analyzePaper flow', () => {
     })
     expect(summaryChunks.join('')).toBe('A compact summary')
     expect(progress).toEqual(expect.arrayContaining(['parsing', 'summarizing', 'generating_code', 'done']))
+  })
+
+  it('passes the selected output code language into the combined analysis prompt', async () => {
+    mockedGetActiveSettings.mockReturnValueOnce({
+      apiKey: 'key',
+      provider: 'deepseek',
+      model: 'deepseek-v4-flash',
+      language: 'en-US',
+      selectedCodeLanguage: 'MATLAB',
+    })
+    mockLlmOutput(outputWithoutCode('MATLAB summary'))
+
+    await analyzePaper('paper.pdf', () => {})
+
+    const messages = mockedCallDeepSeek.mock.calls[0][0]
+    expect(messages[0].content).toContain('Demo Code and core code files MUST be generated in MATLAB')
+    expect(messages[1].content).toContain('The selected output code language is MATLAB')
+    expect(messages[1].content).toContain('core_code/descriptive_file_name.m')
   })
 
   it('caches generated core code and returns hasCoreCode for valid code output', async () => {

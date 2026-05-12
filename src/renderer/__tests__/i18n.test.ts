@@ -16,6 +16,7 @@ const requiredKeys = [
   'result.completionTokens',
   'result.totalTokens',
   'upload.cancelAnalysis',
+  'settings.outputCodeLanguage',
 ]
 
 describe('i18n coverage for analysis metrics', () => {

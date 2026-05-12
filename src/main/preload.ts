@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('electronAPI', {
   selectPDF: () => ipcRenderer.invoke('select-pdf'),
-  saveSettings: (settings: { apiKey?: string; provider?: string; model?: string; language?: string }) =>
+  saveSettings: (settings: { apiKey?: string; provider?: string; model?: string; language?: string; selectedCodeLanguage?: string }) =>
     ipcRenderer.invoke('save-settings', settings),
   getSettings: () => ipcRenderer.invoke('get-settings'),
   analyzePaper: (pdfPath: string) => ipcRenderer.invoke('analyze-paper', pdfPath),

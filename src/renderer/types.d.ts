@@ -1,5 +1,6 @@
 type Language = 'zh-CN' | 'en-US'
 type AnalysisStatus = 'idle' | 'parsing' | 'analyzing' | 'success' | 'error'
+type CodeLanguage = 'Python' | 'C' | 'C++' | 'Java' | 'Go' | 'Rust' | 'MATLAB' | 'R'
 
 interface TokenUsage {
   promptTokens?: number
@@ -26,8 +27,8 @@ interface AnalysisError {
 
 interface ElectronAPI {
   selectPDF: () => Promise<string | null>
-  saveSettings: (settings: { apiKey?: string; provider?: string; model?: string; language?: Language }) => Promise<boolean>
-  getSettings: () => Promise<{ apiKey: string; provider: string; model: string; language: Language }>
+  saveSettings: (settings: { apiKey?: string; provider?: string; model?: string; language?: Language; selectedCodeLanguage?: CodeLanguage }) => Promise<boolean>
+  getSettings: () => Promise<{ apiKey: string; provider: string; model: string; language: Language; selectedCodeLanguage: CodeLanguage }>
   analyzePaper: (pdfPath: string) => Promise<AnalysisResult | AnalysisError>
   cancelAnalysis: () => Promise<boolean>
   downloadCoreCode: () => Promise<{ ok: true; path: string } | { ok: false; error: string }>

@@ -94,8 +94,11 @@ export async function analyzePaper(
   signal?: AbortSignal
 ): Promise<AnalysisResult> {
   let language = 'zh-CN'
+  let selectedCodeLanguage = 'Python'
   try {
-    language = getActiveSettings().language || 'zh-CN'
+    const settings = getActiveSettings()
+    language = settings.language || 'zh-CN'
+    selectedCodeLanguage = settings.selectedCodeLanguage || 'Python'
   } catch {}
 
   const msg = (zh: string, en: string) => language === 'en-US' ? en : zh
@@ -116,7 +119,7 @@ export async function analyzePaper(
     onProgress({ stage: 'parsing', message: msg(`PDF 解析完成 (${pageCount} 页)`, `PDF parsed (${pageCount} pages)`) })
 
     onProgress({ stage: 'summarizing', message: msg('正在分析论文结构并生成总结...', 'Analyzing paper structure and generating summary...') })
-    const analysisPrompt = buildCombinedAnalysisPrompt(text, language)
+    const analysisPrompt = buildCombinedAnalysisPrompt(text, language, selectedCodeLanguage)
     let rawOutput = ''
     let streamedSummary = ''
     let summaryClosed = false
