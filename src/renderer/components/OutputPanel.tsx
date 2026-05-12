@@ -6,6 +6,7 @@ import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 import { FileText, Download, CheckCircle2, AlertCircle, LoaderCircle, FileSearch } from 'lucide-react'
 import { t, Language } from '../i18n'
+import { formatElapsedTime, formatTokenCount, getTokenTotal } from '../utils/analysisMetrics'
 
 interface OutputPanelProps {
   result: { summary: string; hasCoreCode: boolean } | null
@@ -167,25 +168,6 @@ export default function OutputPanel({ result, analyzing, streamingSummary, error
   )
 }
 
-function formatElapsedTime(totalSeconds: number): string {
-  const safeSeconds = Math.max(0, totalSeconds)
-  const hours = Math.floor(safeSeconds / 3600)
-  const minutes = Math.floor((safeSeconds % 3600) / 60)
-  const seconds = safeSeconds % 60
-  const mm = String(minutes).padStart(2, '0')
-  const ss = String(seconds).padStart(2, '0')
-
-  if (hours > 0) {
-    return `${String(hours).padStart(2, '0')}:${mm}:${ss}`
-  }
-
-  return `${mm}:${ss}`
-}
-
-function formatTokenCount(value: number | undefined): string {
-  return value === undefined ? '-' : value.toLocaleString()
-}
-
 function getStatusLabel(language: Language, status: AnalysisStatus): string {
   const statusKey = status === 'idle'
     ? 'result.statusIdle'
@@ -198,15 +180,6 @@ function getStatusLabel(language: Language, status: AnalysisStatus): string {
           : 'result.statusError'
 
   return t(language, statusKey)
-}
-
-function getTokenTotal(usage: TokenUsage | null): number | undefined {
-  if (!usage) return undefined
-  if (usage.totalTokens !== undefined) return usage.totalTokens
-  if (usage.promptTokens !== undefined && usage.completionTokens !== undefined) {
-    return usage.promptTokens + usage.completionTokens
-  }
-  return undefined
 }
 
 function AnalysisStatusBar({ language, status, elapsedTime, tokenUsage }: {

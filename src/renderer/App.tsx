@@ -3,6 +3,7 @@ import { Language, t } from './i18n'
 import SettingsPanel from './components/SettingsPanel'
 import PDFPanel from './components/PDFPanel'
 import OutputPanel from './components/OutputPanel'
+import { clamp, readStoredNumber } from './utils/resizableLayout'
 
 const SIDEBAR_WIDTH_KEY = 'paper2corecode.sidebarWidth'
 const UPLOAD_HEIGHT_KEY = 'paper2corecode.uploadHeight'
@@ -15,25 +16,6 @@ const UPLOAD_MIN_HEIGHT = 230
 const UPLOAD_MAX_HEIGHT = 420
 const RESULT_MIN_HEIGHT = 260
 const RESIZE_HANDLE_SIZE = 16
-
-function clamp(value: number, min: number, max: number): number {
-  if (max < min) return min
-  return Math.min(Math.max(value, min), max)
-}
-
-function readStoredNumber(key: string, fallback: number): number {
-  let stored: string | null = null
-  try {
-    stored = window.localStorage.getItem(key)
-  } catch {
-    return fallback
-  }
-
-  if (!stored) return fallback
-
-  const parsed = Number(stored)
-  return Number.isFinite(parsed) ? parsed : fallback
-}
 
 function getContentWidth(element: HTMLElement): number {
   const styles = window.getComputedStyle(element)
