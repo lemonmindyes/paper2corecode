@@ -1,3 +1,24 @@
+function getCodeExtension(selectedCodeLanguage: string): string {
+  switch (selectedCodeLanguage) {
+    case 'C':
+      return 'c'
+    case 'C++':
+      return 'cpp'
+    case 'Java':
+      return 'java'
+    case 'Go':
+      return 'go'
+    case 'Rust':
+      return 'rs'
+    case 'MATLAB':
+      return 'm'
+    case 'R':
+      return 'R'
+    default:
+      return 'py'
+  }
+}
+
 export function buildSummaryPrompt(text: string, language: string = 'zh-CN'): { system: string; user: string } {
   const isEn = language === 'en-US'
 
@@ -71,8 +92,9 @@ $$`
   }
 }
 
-export function buildCodePrompt(text: string, summaryContext: string, language: string = 'zh-CN'): { system: string; user: string } {
+export function buildCodePrompt(text: string, summaryContext: string, language: string = 'zh-CN', selectedCodeLanguage: string = 'Python'): { system: string; user: string } {
   const isEn = language === 'en-US'
+  const codeExtension = getCodeExtension(selectedCodeLanguage)
 
   const system = `You are an expert AI research paper analyst. Your task is to analyze academic papers and produce structured summaries and, when applicable, extract core algorithmic implementations.
 
@@ -97,9 +119,9 @@ ${summaryContext}
 Your task:
 1. Identify the smallest implementable core method from the paper.
 2. Implement it as multiple focused files inside a folder-style project structure.
-3. Prefer Python for ML/algorithm papers.
+3. Generate all demo/core code in ${selectedCodeLanguage}. Do NOT switch to Python unless the selected output code language is Python.
 4. Keep files componentized and minimal: configuration, model/algorithm, loss/metrics if needed, training or inference, and an example entry point.
-5. Include a requirements.txt file when dependencies are needed.
+5. Use file extensions and dependency notes appropriate for ${selectedCodeLanguage}.
 
 Output format:
 Return ONLY strict JSON. Do not wrap it in Markdown fences. Do not add prose before or after the JSON.
@@ -108,35 +130,7 @@ The JSON schema MUST be:
 {
   "files": [
     {
-      "path": "requirements.txt",
-      "content": "..."
-    },
-    {
-      "path": "core_code/__init__.py",
-      "content": "..."
-    },
-    {
-      "path": "core_code/config.py",
-      "content": "..."
-    },
-    {
-      "path": "core_code/model.py",
-      "content": "..."
-    },
-    {
-      "path": "core_code/losses.py",
-      "content": "..."
-    },
-    {
-      "path": "core_code/train.py",
-      "content": "..."
-    },
-    {
-      "path": "core_code/inference.py",
-      "content": "..."
-    },
-    {
-      "path": "core_code/example.py",
+      "path": "core_code/descriptive_file_name.${codeExtension}",
       "content": "..."
     }
   ]
@@ -157,6 +151,7 @@ Rules:
 - If the paper uses pseudo-code, translate it to real code.
 - If the paper describes an architecture, implement the forward pass.
 - If the paper has a training procedure, implement the training loop.
+- Demo Code MUST use ${selectedCodeLanguage}.
 - Keep code APIs, filenames, classes, and variables in English even when the UI language is Chinese.`
 
   return {
@@ -165,8 +160,9 @@ Rules:
   }
 }
 
-export function buildCombinedAnalysisPrompt(text: string, language: string = 'zh-CN'): { system: string; user: string } {
+export function buildCombinedAnalysisPrompt(text: string, language: string = 'zh-CN', selectedCodeLanguage: string = 'Python'): { system: string; user: string } {
   const isEn = language === 'en-US'
+  const codeExtension = getCodeExtension(selectedCodeLanguage)
 
   const system = `You are an expert AI research paper analyst. Analyze the paper, write a README.md-style summary, decide whether core component code is needed, and generate code only when applicable.
 
@@ -174,6 +170,7 @@ Rules:
 - Be precise and factual. Do not fabricate details not present in the paper.
 - Use ${isEn ? 'English' : 'Chinese'} for paper summary and decision reason.
 - Keep generated code APIs, filenames, classes, and variables in English.
+- Demo Code and core code files MUST be generated in ${selectedCodeLanguage}.
 - Format mathematical expressions in the summary with Markdown LaTeX delimiters: inline math as $...$ and block math as $$...$$.
 - Follow the exact tagged output protocol. Do not add prose before, between, or after the required tags.`
 
@@ -251,7 +248,7 @@ Use "needed": true only if the paper clearly describes at least one implementabl
   "minimalImplementationBoundary": "exactly what the generated code should implement, and what it should not implement",
   "files": [
     {
-      "path": "core_code/descriptive_file_name.py",
+      "path": "core_code/descriptive_file_name.${codeExtension}",
       "purpose": "why this file is necessary for the minimal core contribution",
       "mainSymbols": ["function_or_class_name"],
       "mustInclude": ["specific method elements that must appear in this file"],
@@ -277,6 +274,9 @@ Use "needed": true only if the paper clearly describes at least one implementabl
 </P2CC_CODE_BLUEPRINT>
 
 Blueprint rules:
+- The selected output code language is ${selectedCodeLanguage}. Every generated source file MUST use ${selectedCodeLanguage}.
+- Do NOT switch to Python unless the selected output code language is Python.
+- Choose file extensions appropriate for ${selectedCodeLanguage}.
 - Do NOT assume the paper is about AI, machine learning, or software engineering. Infer the domain from the paper.
 - Do NOT use a fixed project template. The file list must be designed from the paper's smallest implementable computational contribution.
 - Each file must be justified by the core contribution. If a file is not necessary for that contribution, omit it.
@@ -288,7 +288,7 @@ Blueprint rules:
 
 5. Then output code files inside these exact tags. The code bundle MUST contain exactly the files listed in P2CC_CODE_BLUEPRINT.files, no more and no fewer:
 <P2CC_CODE_BUNDLE>
-<P2CC_FILE path="core_code/descriptive_file_name.py">
+<P2CC_FILE path="core_code/descriptive_file_name.${codeExtension}">
 ...
 </P2CC_FILE>
 </P2CC_CODE_BUNDLE>
@@ -301,7 +301,7 @@ Code generation rules:
 - Do NOT encode file contents as JSON strings. Write raw file content directly inside the file block.
 - Use the exact paths declared in P2CC_CODE_BLUEPRINT.files.
 - Do not generate extra helper files outside the blueprint.
-- Prefer Python for algorithmic papers, but choose simple, dependency-light code that best fits the paper's method.
+- Demo Code MUST use ${selectedCodeLanguage}; choose simple, dependency-light code that best fits the paper's method within that language.
 - Keep the implementation reusable as a core component, not as a full experiment reproduction project.
 - Use comments to explain key implementation decisions only where helpful.`
 

@@ -15,6 +15,7 @@ function mockSettings(provider = 'deepseek', model?: string, apiKey = 'test-key'
     provider,
     model: model ?? (provider === 'kimi' ? 'kimi-k2.6' : 'deepseek-v4-flash'),
     language: 'zh-CN',
+    selectedCodeLanguage: 'Python',
   })
 }
 

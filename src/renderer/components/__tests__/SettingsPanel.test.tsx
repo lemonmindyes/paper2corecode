@@ -12,6 +12,7 @@ const baseSettings: Settings = {
   provider: 'deepseek',
   model: 'deepseek-v4-flash',
   language: 'en-US',
+  selectedCodeLanguage: 'Python',
 }
 
 function installElectronAPI(settings: Settings = baseSettings) {
@@ -70,6 +71,7 @@ describe('SettingsPanel', () => {
       provider: 'kimi',
       model: 'kimi-k2.5',
       language: 'en-US',
+      selectedCodeLanguage: 'Rust',
     })
 
     expect(await screen.findByText('API Key configured')).toBeInTheDocument()
@@ -105,6 +107,7 @@ describe('SettingsPanel', () => {
       provider: 'deepseek',
       model: 'deepseek-v4-flash',
       language: 'en-US',
+      selectedCodeLanguage: 'Python',
     })
 
     await screen.findByText('API Key configured')
@@ -120,13 +123,15 @@ describe('SettingsPanel', () => {
       provider: 'unknown-provider' as Settings['provider'],
       model: 'unknown-model',
       language: 'en-US',
+      selectedCodeLanguage: 'TypeScript' as Settings['selectedCodeLanguage'],
     })
 
     await screen.findByText('API Key configured')
-    const [providerSelect, modelSelect] = screen.getAllByRole('combobox')
+    const [providerSelect, modelSelect, codeLanguageSelect] = screen.getAllByRole('combobox')
 
     expect(providerSelect).toHaveValue('deepseek')
     expect(modelSelect).toHaveValue('deepseek-v4-flash')
+    expect(codeLanguageSelect).toHaveValue('Python')
   })
 
   it('uses the default provider when stored settings omit provider', async () => {
@@ -135,6 +140,7 @@ describe('SettingsPanel', () => {
       provider: '' as Settings['provider'],
       model: 'deepseek-v4-pro',
       language: 'en-US',
+      selectedCodeLanguage: 'Python',
     })
 
     await screen.findByText('API Key configured')
@@ -149,8 +155,8 @@ describe('SettingsPanel', () => {
     const api = installElectronAPI()
     vi.mocked(api.getSettings)
       .mockReset()
-      .mockResolvedValueOnce({ apiKey: 'sk-deep', provider: 'deepseek', model: 'deepseek-v4-flash', language: 'en-US' })
-      .mockResolvedValueOnce({ apiKey: '', provider: 'kimi', model: 'kimi-k2.6', language: 'en-US' })
+      .mockResolvedValueOnce({ apiKey: 'sk-deep', provider: 'deepseek', model: 'deepseek-v4-flash', language: 'en-US', selectedCodeLanguage: 'Python' })
+      .mockResolvedValueOnce({ apiKey: '', provider: 'kimi', model: 'kimi-k2.6', language: 'en-US', selectedCodeLanguage: 'Python' })
     render(
       <SettingsPanel
         language='en-US'
@@ -176,6 +182,7 @@ describe('SettingsPanel', () => {
       provider: 'kimi',
       model: 'kimi-k2.6',
       language: 'en-US',
+      selectedCodeLanguage: 'Python',
     })
 
     await screen.findByText('API Key configured')
@@ -185,5 +192,25 @@ describe('SettingsPanel', () => {
 
     expect(api.saveSettings).toHaveBeenCalledWith({ model: 'kimi-k2.5' })
     expect(modelSelect).toHaveValue('kimi-k2.5')
+  })
+
+  it('shows and saves the selected output code language', async () => {
+    const user = userEvent.setup()
+    const { api } = renderSettingsPanel({
+      apiKey: 'sk-existing',
+      provider: 'deepseek',
+      model: 'deepseek-v4-flash',
+      language: 'en-US',
+      selectedCodeLanguage: 'Go',
+    })
+
+    expect(await screen.findByText('Output Code Language')).toBeInTheDocument()
+    const [, , codeLanguageSelect] = screen.getAllByRole('combobox')
+    expect(codeLanguageSelect).toHaveValue('Go')
+
+    await user.selectOptions(codeLanguageSelect, 'Rust')
+
+    expect(api.saveSettings).toHaveBeenCalledWith({ selectedCodeLanguage: 'Rust' })
+    expect(codeLanguageSelect).toHaveValue('Rust')
   })
 })

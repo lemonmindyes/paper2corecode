@@ -15,6 +15,7 @@ function installElectronMock() {
         provider: 'deepseek',
         model: 'deepseek-v4-flash',
         language: 'en-US',
+        selectedCodeLanguage: 'Python',
       }),
       analyzePaper: vi.fn(),
       cancelAnalysis: vi.fn().mockResolvedValue(true),

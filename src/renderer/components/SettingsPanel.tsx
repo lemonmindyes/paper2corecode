@@ -64,6 +64,8 @@ const PROVIDERS = [
   },
 ]
 
+const CODE_LANGUAGES: CodeLanguage[] = ['Python', 'C', 'C++', 'Java', 'Go', 'Rust', 'MATLAB', 'R']
+
 const sectionStyle: React.CSSProperties = {
   background: 'var(--color-surface)',
   borderRadius: 'var(--radius-md)',
@@ -123,21 +125,26 @@ export default function SettingsPanel({
   const [apiKey, setApiKey] = useState('')
   const [provider, setProvider] = useState(PROVIDERS[0].value)
   const [model, setModel] = useState(PROVIDERS[0].models[0].value)
+  const [selectedCodeLanguage, setSelectedCodeLanguage] = useState<CodeLanguage>('Python')
   const [configured, setConfigured] = useState(false)
   const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  const applySettings = (s: { apiKey: string; provider: string; model: string }) => {
+  const applySettings = (s: { apiKey: string; provider: string; model: string; selectedCodeLanguage?: string }) => {
     const nextProvider = s.provider || PROVIDERS[0].value
     const providerConfig = PROVIDERS.find((item) => item.value === nextProvider) || PROVIDERS[0]
     const nextModel = providerConfig.models.some((item) => item.value === s.model)
       ? s.model
       : providerConfig.models[0].value
+    const nextCodeLanguage = CODE_LANGUAGES.includes(s.selectedCodeLanguage as CodeLanguage)
+      ? s.selectedCodeLanguage as CodeLanguage
+      : 'Python'
     const hasKey = s.apiKey.trim().length > 0
 
     setApiKey(s.apiKey)
     setProvider(providerConfig.value)
     setModel(nextModel)
+    setSelectedCodeLanguage(nextCodeLanguage)
     setConfigured(hasKey)
     setEditing(!hasKey)
     onApiKeyConfiguredChange(hasKey)
@@ -150,7 +157,7 @@ export default function SettingsPanel({
     })
   }, [])
 
-  const saveConfig = async (next: { provider?: string; model?: string; apiKey?: string }) => {
+  const saveConfig = async (next: { provider?: string; model?: string; apiKey?: string; selectedCodeLanguage?: CodeLanguage }) => {
     await window.electronAPI.saveSettings(next)
   }
 
@@ -168,6 +175,11 @@ export default function SettingsPanel({
   const handleModelChange = async (nextModel: string) => {
     setModel(nextModel)
     await saveConfig({ model: nextModel })
+  }
+
+  const handleCodeLanguageChange = async (nextLanguage: CodeLanguage) => {
+    setSelectedCodeLanguage(nextLanguage)
+    await saveConfig({ selectedCodeLanguage: nextLanguage })
   }
 
   const handleSave = async () => {
@@ -216,6 +228,17 @@ export default function SettingsPanel({
       >
         {currentProvider.models.map((item) => (
           <option key={item.value} value={item.value} disabled={item.disabled}>{item.label}</option>
+        ))}
+      </select>
+
+      <label style={labelStyle}>{t(language, 'settings.outputCodeLanguage')}</label>
+      <select
+        value={selectedCodeLanguage}
+        onChange={(e) => handleCodeLanguageChange(e.target.value as CodeLanguage)}
+        style={selectStyle}
+      >
+        {CODE_LANGUAGES.map((item) => (
+          <option key={item} value={item}>{item}</option>
         ))}
       </select>
 

@@ -43,6 +43,7 @@ describe('settingsStore', () => {
       provider: 'deepseek',
       model: PROVIDER_SETTINGS.deepseek.defaultModel,
       language: 'zh-CN',
+      selectedCodeLanguage: 'Python',
     })
   })
 
@@ -54,6 +55,7 @@ describe('settingsStore', () => {
       provider: 'deepseek',
       model: PROVIDER_SETTINGS.deepseek.defaultModel,
       language: 'zh-CN',
+      selectedCodeLanguage: 'Python',
     })
   })
 
@@ -76,6 +78,25 @@ describe('settingsStore', () => {
       provider: 'kimi',
       model: 'kimi-k2.5',
       language: 'en-US',
+      selectedCodeLanguage: 'Python',
+    })
+  })
+
+  it('normalizes and preserves the selected output code language', () => {
+    writeConfig({
+      provider: 'deepseek',
+      selectedCodeLanguage: 'Rust',
+      providers: {
+        deepseek: { apiKey: 'deep-key', model: 'deepseek-v4-pro' },
+      },
+    })
+
+    expect(getActiveSettings()).toEqual({
+      apiKey: 'deep-key',
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+      language: 'zh-CN',
+      selectedCodeLanguage: 'Rust',
     })
   })
 
@@ -93,6 +114,21 @@ describe('settingsStore', () => {
       provider: 'deepseek',
       model: PROVIDER_SETTINGS.deepseek.defaultModel,
       language: 'zh-CN',
+      selectedCodeLanguage: 'Python',
+    })
+  })
+
+  it('falls back invalid stored output code languages to Python', () => {
+    writeConfig({
+      provider: 'deepseek',
+      selectedCodeLanguage: 'TypeScript',
+      providers: {
+        deepseek: { apiKey: 'deep-key', model: 'deepseek-v4-flash' },
+      },
+    })
+
+    expect(getActiveSettings()).toMatchObject({
+      selectedCodeLanguage: 'Python',
     })
   })
 
@@ -111,6 +147,7 @@ describe('settingsStore', () => {
       provider: 'kimi',
       model: PROVIDER_SETTINGS.kimi.defaultModel,
       language: 'en-US',
+      selectedCodeLanguage: 'Python',
     })
   })
 
@@ -127,15 +164,17 @@ describe('settingsStore', () => {
       provider: 'glm',
       model: 'glm-5-turbo',
       language: 'en-US',
+      selectedCodeLanguage: 'Python',
     })
   })
 
   it('saves active provider settings and preserves provider-specific keys', () => {
-    expect(saveSettingsPatch({ apiKey: 'deep-key', language: 'en-US' })).toEqual({
+    expect(saveSettingsPatch({ apiKey: 'deep-key', language: 'en-US', selectedCodeLanguage: 'Go' })).toEqual({
       apiKey: 'deep-key',
       provider: 'deepseek',
       model: PROVIDER_SETTINGS.deepseek.defaultModel,
       language: 'en-US',
+      selectedCodeLanguage: 'Go',
     })
 
     expect(saveSettingsPatch({ provider: 'kimi' })).toEqual({
@@ -143,6 +182,7 @@ describe('settingsStore', () => {
       provider: 'kimi',
       model: PROVIDER_SETTINGS.kimi.defaultModel,
       language: 'en-US',
+      selectedCodeLanguage: 'Go',
     })
 
     expect(saveSettingsPatch({ apiKey: 'kimi-key', model: 'kimi-k2.5' })).toEqual({
@@ -150,6 +190,7 @@ describe('settingsStore', () => {
       provider: 'kimi',
       model: 'kimi-k2.5',
       language: 'en-US',
+      selectedCodeLanguage: 'Go',
     })
 
     expect(saveSettingsPatch({ provider: 'deepseek' })).toEqual({
@@ -157,6 +198,19 @@ describe('settingsStore', () => {
       provider: 'deepseek',
       model: PROVIDER_SETTINGS.deepseek.defaultModel,
       language: 'en-US',
+      selectedCodeLanguage: 'Go',
+    })
+  })
+
+  it('saves selected output code language patches and normalizes unsupported values', () => {
+    expect(saveSettingsPatch({ selectedCodeLanguage: 'MATLAB' })).toMatchObject({
+      selectedCodeLanguage: 'MATLAB',
+    })
+
+    expect(readStoredConfig().selectedCodeLanguage).toBe('MATLAB')
+
+    expect(saveSettingsPatch({ selectedCodeLanguage: 'CUDA' })).toMatchObject({
+      selectedCodeLanguage: 'Python',
     })
   })
 

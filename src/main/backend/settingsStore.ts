@@ -44,11 +44,14 @@ export const PROVIDER_SETTINGS: Record<string, { defaultModel: string; models: s
   },
 }
 
+export const CODE_LANGUAGE_OPTIONS = ['Python', 'C', 'C++', 'Java', 'Go', 'Rust', 'MATLAB', 'R'] as const
+
 export interface ActiveSettings {
   apiKey: string
   provider: string
   model: string
   language: string
+  selectedCodeLanguage: string
 }
 
 export interface SettingsPatch {
@@ -56,6 +59,7 @@ export interface SettingsPatch {
   provider?: string
   model?: string
   language?: string
+  selectedCodeLanguage?: string
 }
 
 interface ProviderStoredSettings {
@@ -66,11 +70,13 @@ interface ProviderStoredSettings {
 interface StoredSettings {
   provider: string
   language: string
+  selectedCodeLanguage: string
   providers: Record<string, ProviderStoredSettings>
 }
 
 const DEFAULT_PROVIDER = 'deepseek'
 const DEFAULT_LANGUAGE = 'zh-CN'
+const DEFAULT_CODE_LANGUAGE = 'Python'
 
 function getConfigPath(): string {
   return path.join(app.getPath('userData'), 'config.json')
@@ -92,6 +98,12 @@ function normalizeLanguage(language: unknown): string {
   return language === 'en-US' ? 'en-US' : DEFAULT_LANGUAGE
 }
 
+function normalizeCodeLanguage(language: unknown): string {
+  return typeof language === 'string' && (CODE_LANGUAGE_OPTIONS as readonly string[]).includes(language)
+    ? language
+    : DEFAULT_CODE_LANGUAGE
+}
+
 function createDefaultSettings(): StoredSettings {
   const providers: Record<string, ProviderStoredSettings> = {}
 
@@ -105,6 +117,7 @@ function createDefaultSettings(): StoredSettings {
   return {
     provider: DEFAULT_PROVIDER,
     language: DEFAULT_LANGUAGE,
+    selectedCodeLanguage: DEFAULT_CODE_LANGUAGE,
     providers,
   }
 }
@@ -116,6 +129,7 @@ function normalizeSettings(raw: unknown): StoredSettings {
   const selectedProvider = isKnownProvider(raw.provider) ? raw.provider : DEFAULT_PROVIDER
   settings.provider = selectedProvider
   settings.language = normalizeLanguage(raw.language)
+  settings.selectedCodeLanguage = normalizeCodeLanguage(raw.selectedCodeLanguage)
 
   if (isObject(raw.providers)) {
     for (const provider of Object.keys(PROVIDER_SETTINGS)) {
@@ -161,6 +175,7 @@ export function getActiveSettings(): ActiveSettings {
     provider: settings.provider,
     model: providerSettings.model,
     language: settings.language,
+    selectedCodeLanguage: settings.selectedCodeLanguage,
   }
 }
 
@@ -169,6 +184,10 @@ export function saveSettingsPatch(patch: SettingsPatch): ActiveSettings {
 
   if (patch.language !== undefined) {
     settings.language = normalizeLanguage(patch.language)
+  }
+
+  if (patch.selectedCodeLanguage !== undefined) {
+    settings.selectedCodeLanguage = normalizeCodeLanguage(patch.selectedCodeLanguage)
   }
 
   if (patch.provider !== undefined) {

@@ -49,7 +49,7 @@ ipcMain.handle('get-settings', async () => {
   try {
     return getActiveSettings()
   } catch {
-    return { apiKey: '', provider: 'deepseek', model: 'deepseek-v4-flash', language: 'zh-CN' }
+    return { apiKey: '', provider: 'deepseek', model: 'deepseek-v4-flash', language: 'zh-CN', selectedCodeLanguage: 'Python' }
   }
 })
 
