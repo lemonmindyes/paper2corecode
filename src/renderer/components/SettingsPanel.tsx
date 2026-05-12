@@ -125,7 +125,6 @@ export default function SettingsPanel({
   const [model, setModel] = useState(PROVIDERS[0].models[0].value)
   const [configured, setConfigured] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const applySettings = (s: { apiKey: string; provider: string; model: string }) => {
@@ -156,7 +155,7 @@ export default function SettingsPanel({
   }
 
   const handleProviderChange = async (nextProvider: string) => {
-    const providerConfig = PROVIDERS.find((item) => item.value === nextProvider) || PROVIDERS[0]
+    const providerConfig = PROVIDERS.find((item) => item.value === nextProvider)!
     const nextModel = providerConfig.models[0].value
 
     setProvider(providerConfig.value)
@@ -174,11 +173,9 @@ export default function SettingsPanel({
   const handleSave = async () => {
     const hasKey = apiKey.trim().length > 0
     await saveConfig({ provider, apiKey })
-    setSaved(true)
     setConfigured(hasKey)
     setEditing(!hasKey)
     onApiKeyConfiguredChange(hasKey)
-    setTimeout(() => setSaved(false), 2000)
   }
 
   const handleChange = () => {
@@ -194,7 +191,7 @@ export default function SettingsPanel({
 
   if (loading) return null
 
-  const currentProvider = PROVIDERS.find((item) => item.value === provider) || PROVIDERS[0]
+  const currentProvider = PROVIDERS.find((item) => item.value === provider)!
 
   return (
     <div style={sectionStyle}>
@@ -249,7 +246,7 @@ export default function SettingsPanel({
               marginTop: 2,
             }}
           >
-            {configured ? t(language, 'settings.change') : t(language, 'settings.configure')}
+            {t(language, 'settings.change')}
           </button>
         </div>
       ) : (
@@ -286,11 +283,11 @@ export default function SettingsPanel({
               disabled={!apiKey.trim()}
               style={{
                 ...btnStyle,
-                background: saved ? 'var(--color-success)' : 'var(--color-accent)',
+                background: 'var(--color-accent)',
                 flex: 1,
               }}
             >
-              {saved ? t(language, 'settings.saved') : t(language, 'settings.save')}
+              {t(language, 'settings.save')}
             </button>
             {configured && (
               <button

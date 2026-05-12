@@ -112,6 +112,75 @@ describe('writeCodeFolder', () => {
     fs.rmSync(output, { recursive: true, force: true })
   })
 
+  it('exports blueprint README defaults when optional scope fields are absent', () => {
+    cacheCodeBundle({
+      readme: '# Test Summary',
+      files: [{ path: 'core_code/loss.py', content: 'def loss(): pass' }],
+      blueprint: {
+        coreContribution: 'A minimal algorithm',
+        minimalImplementationBoundary: 'Only the recurrence',
+        paperDomain: 'Optimization',
+        files: [{
+          path: 'core_code/loss.py',
+          purpose: 'Implement recurrence | with escaped pipe',
+          mainSymbols: ['loss\nfunction'],
+          mustInclude: ['recurrence'],
+          mustNotInclude: ['training loop'],
+        }],
+      },
+    })
+
+    const output = tempDir()
+    const result = writeCodeFolder(output)
+    expect(result.ok).toBe(true)
+
+    const readmeContent = fs.readFileSync(path.join(output, 'README.md'), 'utf-8')
+    expect(readmeContent).toContain('### Inferred Paper Domain')
+    expect(readmeContent).toContain('Optimization')
+    expect(readmeContent).toContain('Implement recurrence \\| with escaped pipe')
+    expect(readmeContent).toContain('loss function')
+    expect(readmeContent).toContain('| None specified. | Not applicable. |')
+    expect(readmeContent).toContain('Not specified.')
+
+    fs.rmSync(output, { recursive: true, force: true })
+  })
+
+  it.each([
+    '/absolute.py',
+    'C:/absolute.py',
+    'core_code//loss.py',
+    'README.md',
+    'core_code/README.md',
+  ])('rejects unsafe generated path variant %s', (unsafePath) => {
+    cacheCodeBundle({
+      readme: '# Unsafe',
+      files: [{ path: unsafePath, content: 'bad' }],
+    })
+
+    const output = tempDir()
+    const result = writeCodeFolder(output)
+
+    expect(result).toEqual({ ok: false, error: `Unsafe generated file path: ${unsafePath}` })
+    fs.rmSync(output, { recursive: true, force: true })
+  })
+
+  it('returns a write failure when the output path cannot be created as a directory', () => {
+    cacheCodeBundle({
+      readme: '# Test Summary',
+      files: [{ path: 'core_code/loss.py', content: 'def loss(): pass' }],
+    })
+    const output = tempDir()
+    fs.writeFileSync(output, 'not a directory')
+
+    const result = writeCodeFolder(output)
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error).toContain('Failed to write project folder')
+    }
+    fs.rmSync(output, { force: true })
+  })
+
   it('creates nested directories for generated files', () => {
     cacheCodeBundle({
       readme: '# Nested',

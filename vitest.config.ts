@@ -14,7 +14,16 @@ export default defineConfig({
         'src/**/*.d.ts',
         'src/**/__tests__/**',
         'src/test/**',
+        'src/main/main.ts',
+        'src/main/preload.ts',
+        'src/renderer/main.tsx',
       ],
+      thresholds: {
+        statements: 95,
+        branches: 95,
+        functions: 95,
+        lines: 95,
+      },
     },
   },
 })
