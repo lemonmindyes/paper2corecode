@@ -61,6 +61,26 @@ describe('App resizable layout', () => {
     })
   })
 
+  it('clamps stored panel sizes to the available viewport on mount', async () => {
+    localStorage.setItem('paper2corecode.sidebarWidth', '420')
+    localStorage.setItem('paper2corecode.uploadHeight', '420')
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(700)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(500)
+
+    render(<App />)
+    await screen.findByText('API Key configured')
+
+    const sidebarHandle = screen.getByLabelText('Resize sidebar')
+    const appBody = sidebarHandle.parentElement as HTMLElement
+    const uploadHandle = screen.getByLabelText('Resize upload and summary panels')
+    const mainContent = uploadHandle.parentElement as HTMLElement
+
+    await waitFor(() => {
+      expect(appBody.style.gridTemplateColumns).toContain('220px')
+      expect(mainContent.style.gridTemplateRows).toContain('230px')
+    })
+  })
+
   it('updates and persists sidebar width during drag', async () => {
     render(<App />)
     await screen.findByText('API Key configured')
@@ -90,6 +110,30 @@ describe('App resizable layout', () => {
 
     expect(mainContent.style.gridTemplateRows).toContain('330px')
     expect(localStorage.getItem('paper2corecode.uploadHeight')).toBe('330')
+    expect(document.body).not.toHaveClass('is-resizing-layout')
+  })
+
+  it('handles pointer cancellation and storage failures during resizing', async () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota exceeded')
+    })
+    render(<App />)
+    await screen.findByText('API Key configured')
+
+    const sidebarHandle = screen.getByLabelText('Resize sidebar')
+    const appBody = sidebarHandle.parentElement as HTMLElement
+    fireEvent.pointerDown(sidebarHandle, { clientX: 280 })
+    fireEvent.pointerCancel(window, { clientX: 320 })
+
+    expect(appBody.style.gridTemplateColumns).toContain('320px')
+    expect(document.body).not.toHaveClass('is-resizing-layout')
+
+    const uploadHandle = screen.getByLabelText('Resize upload and summary panels')
+    const mainContent = uploadHandle.parentElement as HTMLElement
+    fireEvent.pointerDown(uploadHandle, { clientY: 260 })
+    fireEvent.pointerCancel(window, { clientY: 300 })
+
+    expect(mainContent.style.gridTemplateRows).toContain('300px')
     expect(document.body).not.toHaveClass('is-resizing-layout')
   })
 

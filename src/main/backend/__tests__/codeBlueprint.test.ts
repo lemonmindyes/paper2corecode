@@ -48,6 +48,10 @@ describe('extractJsonObject', () => {
   it('throws on malformed JSON', () => {
     expect(() => extractJsonObject('{bad')).toThrow(AppError)
   })
+
+  it('throws with parse detail when braces contain invalid JSON', () => {
+    expect(() => extractJsonObject('{bad}')).toThrow(AppError)
+  })
 })
 
 describe('validateGeneratedFilePath', () => {
@@ -181,6 +185,45 @@ describe('parseCodeBlueprint', () => {
 
   it('throws when input is not valid JSON', () => {
     expect(() => parseCodeBlueprint('not json')).toThrow(AppError)
+  })
+
+  it('throws when a file entry is not an object', () => {
+    const parsed = JSON.parse(makeMinimalBlueprintJson())
+    parsed.files = ['bad-file']
+
+    expect(() => parseCodeBlueprint(JSON.stringify(parsed))).toThrow(/文件 #1 无效/)
+  })
+
+  it('throws when optional file arrays are present but not arrays', () => {
+    const parsed = JSON.parse(makeMinimalBlueprintJson())
+    parsed.files[0].inputs = 'paper tensor'
+
+    expect(() => parseCodeBlueprint(JSON.stringify(parsed))).toThrow(/inputs 格式无效/)
+  })
+
+  it('throws when optional file arrays contain empty values', () => {
+    const parsed = JSON.parse(makeMinimalBlueprintJson())
+    parsed.files[0].outputs = ['']
+
+    expect(() => parseCodeBlueprint(JSON.stringify(parsed))).toThrow(AppError)
+  })
+
+  it('throws when omitted entries are not objects', () => {
+    const parsed = JSON.parse(makeMinimalBlueprintJson())
+    parsed.omitted = ['training loop']
+
+    expect(() => parseCodeBlueprint(JSON.stringify(parsed))).toThrow(/omitted #1 无效/)
+  })
+
+  it('ignores non-object minimality checks and non-string evidence', () => {
+    const parsed = JSON.parse(makeMinimalBlueprintJson())
+    parsed.minimalityCheck = 'minimal'
+    parsed.files[0].evidence = 123
+
+    const blueprint = parseCodeBlueprint(JSON.stringify(parsed))
+
+    expect(blueprint.minimalityCheck).toBeUndefined()
+    expect(blueprint.files[0].evidence).toBeUndefined()
   })
 })
 

@@ -25,4 +25,10 @@ describe('i18n coverage for analysis metrics', () => {
       expect(t(language, key).trim()).not.toBe('')
     }
   })
+
+  it.each(languages)('falls back to the requested key for missing or non-string values in %s', (language) => {
+    expect(t(language, 'missing.key')).toBe('missing.key')
+    expect(t(language, 'result.missing')).toBe('result.missing')
+    expect(t(language, 'result')).toBe('result')
+  })
 })

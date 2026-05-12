@@ -70,7 +70,7 @@ describe('PDFPanel', () => {
 
   it('accepts dropped PDF files and ignores non-PDF files', () => {
     const { props } = renderPDFPanel()
-    const dropZone = screen.getByText('Drop a research paper here').closest('div')!
+    const dropZone = screen.getByText('Drop a research paper here').parentElement!.parentElement!
     const pdf = new File(['pdf'], 'paper.pdf', { type: 'application/pdf' })
     Object.defineProperty(pdf, 'path', { value: 'C:\\papers\\paper.pdf' })
     const text = new File(['text'], 'paper.txt', { type: 'text/plain' })
@@ -81,5 +81,50 @@ describe('PDFPanel', () => {
 
     expect(props.onSetPDFPath).toHaveBeenCalledTimes(1)
     expect(props.onSetPDFPath).toHaveBeenCalledWith('C:\\papers\\paper.pdf')
+  })
+
+  it('shows drag affordance and clears it when the pointer leaves', () => {
+    renderPDFPanel()
+    const dropZone = screen.getByText('Drop a research paper here').parentElement!.parentElement!
+
+    fireEvent.dragOver(dropZone)
+    expect(screen.getByText('Release to attach PDF')).toBeInTheDocument()
+
+    fireEvent.dragLeave(dropZone)
+    expect(screen.getByText('Drop a research paper here')).toBeInTheDocument()
+  })
+
+  it('opens file selection from the drop zone and the change-file action', async () => {
+    const user = userEvent.setup()
+    const { props } = renderPDFPanel({ pdfPath: 'C:\\papers\\paper.pdf' })
+
+    await user.click(screen.getByText('paper.pdf').parentElement!.parentElement!.parentElement!)
+    await user.click(screen.getByText('Change file'))
+
+    expect(props.onSelectPDF).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores drop-zone clicks and dropped files while analyzing', async () => {
+    const user = userEvent.setup()
+    const { props } = renderPDFPanel({ analyzing: true, progress: ['Reading PDF file...'] })
+    const progressRow = screen.getByText('Reading PDF file...').parentElement!.parentElement!.parentElement!
+    const pdf = new File(['pdf'], 'paper.pdf', { type: 'application/pdf' })
+    Object.defineProperty(pdf, 'path', { value: 'C:\\papers\\paper.pdf' })
+
+    await user.click(progressRow)
+    fireEvent.drop(progressRow, { dataTransfer: { files: [pdf] } })
+
+    expect(props.onSelectPDF).not.toHaveBeenCalled()
+    expect(props.onSetPDFPath).not.toHaveBeenCalled()
+  })
+
+  it('ignores dropped PDFs that do not expose an Electron file path', () => {
+    const { props } = renderPDFPanel()
+    const dropZone = screen.getByText('Drop a research paper here').parentElement!.parentElement!
+    const pdf = new File(['pdf'], 'paper.pdf', { type: 'application/pdf' })
+
+    fireEvent.drop(dropZone, { dataTransfer: { files: [pdf] } })
+
+    expect(props.onSetPDFPath).not.toHaveBeenCalled()
   })
 })

@@ -134,4 +134,117 @@ describe('analyzePaper flow', () => {
     })
     expect(mockedParsePDF).not.toHaveBeenCalled()
   })
+
+  it('returns ANALYSIS_CANCELLED when aborted after PDF parsing', async () => {
+    const controller = new AbortController()
+    mockedParsePDF.mockImplementationOnce(async () => {
+      controller.abort()
+      return { text: 'paper text', pageCount: 1 }
+    })
+
+    const result = await analyzePaper('paper.pdf', () => {}, undefined, controller.signal)
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: ErrorCodes.ANALYSIS_CANCELLED },
+    })
+    expect(mockedCallDeepSeek).not.toHaveBeenCalled()
+  })
+
+  it('falls back to summary-only when needed core code has an invalid blueprint', async () => {
+    mockLlmOutput([
+      '<P2CC_SUMMARY>Paper summary</P2CC_SUMMARY>',
+      '<P2CC_CODE_DECISION>{"needed": true}</P2CC_CODE_DECISION>',
+      '<P2CC_CODE_BLUEPRINT>{"files":[]}</P2CC_CODE_BLUEPRINT>',
+      '<P2CC_CODE_BUNDLE><P2CC_FILE path="core_code/loss.py">def loss():\n    return 0</P2CC_FILE></P2CC_CODE_BUNDLE>',
+    ].join(''))
+    const progress: string[] = []
+
+    const result = await analyzePaper('paper.pdf', (item) => progress.push(item.message))
+
+    expect(result).toEqual({
+      ok: true,
+      result: { summary: 'Paper summary', hasCoreCode: false },
+      usage,
+      rawUsage,
+    })
+    expect(progress).toContain('模型未能生成有效的核心代码蓝图，本次仅保留论文总结')
+    expect(getCachedCodeBundle()).toBeNull()
+  })
+
+  it('falls back to summary-only when generated files do not match the blueprint', async () => {
+    mockLlmOutput([
+      '<P2CC_SUMMARY>Paper summary</P2CC_SUMMARY>',
+      '<P2CC_CODE_DECISION>{"needed": true}</P2CC_CODE_DECISION>',
+      '<P2CC_CODE_BLUEPRINT>',
+      JSON.stringify({
+        coreContribution: 'a minimal loss function',
+        minimalImplementationBoundary: 'only the loss function',
+        files: [{
+          path: 'core_code/loss.py',
+          purpose: 'implements the proposed loss function',
+          mainSymbols: ['loss'],
+          mustInclude: ['loss'],
+          mustNotInclude: ['training loop'],
+        }],
+      }),
+      '</P2CC_CODE_BLUEPRINT>',
+      '<P2CC_CODE_BUNDLE><P2CC_FILE path="core_code/train.py">def train():\n    pass</P2CC_FILE></P2CC_CODE_BUNDLE>',
+    ].join(''))
+
+    const result = await analyzePaper('paper.pdf', () => {})
+
+    expect(result).toMatchObject({
+      ok: true,
+      result: { summary: 'Paper summary', hasCoreCode: false },
+      usage,
+      rawUsage,
+    })
+    expect(getCachedCodeBundle()).toBeNull()
+  })
+
+  it('returns ANALYSIS_FAILED for unexpected PDF parsing errors', async () => {
+    mockedParsePDF.mockRejectedValueOnce(new Error('cannot read file'))
+
+    const result = await analyzePaper('paper.pdf', () => {})
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: ErrorCodes.ANALYSIS_FAILED,
+        detail: 'cannot read file',
+      },
+    })
+    expect(mockedCallDeepSeek).not.toHaveBeenCalled()
+  })
+
+  it('returns ANALYSIS_FAILED for unexpected LLM errors', async () => {
+    mockedCallDeepSeek.mockRejectedValueOnce(new Error('stream broke'))
+
+    const result = await analyzePaper('paper.pdf', () => {})
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: ErrorCodes.ANALYSIS_FAILED,
+        detail: 'stream broke',
+      },
+    })
+  })
+
+  it('uses Chinese as fallback language when settings cannot be read', async () => {
+    mockedGetActiveSettings.mockImplementationOnce(() => {
+      throw new Error('settings unavailable')
+    })
+    mockLlmOutput(outputWithoutCode('Fallback language summary'))
+    const progress: string[] = []
+
+    const result = await analyzePaper('paper.pdf', (item) => progress.push(item.message))
+
+    expect(result).toMatchObject({
+      ok: true,
+      result: { summary: 'Fallback language summary', hasCoreCode: false },
+    })
+    expect(progress[0]).toBe('读取 PDF 文件...')
+  })
 })
