@@ -14,6 +14,9 @@ Paper2CoreCode 是一款桌面端论文阅读与最小核心代码生成工具�
 - 💻 判断论文是否需要生成核心代码。
 - 🧭 在写入文件前规划最小核心代码蓝图。
 - 📦 将生成的核心代码导出为本地项目文件夹。
+- ⏱️ 在分析过程中显示分析状态、耗时和可用的 token 消耗。
+- 🛑 支持取消正在进行的分析。
+- ↔️ 支持侧边栏、上传区域和总结区域拖动缩放，并记住布局尺寸。
 - 🌐 支持中文和英文界面/输出切换。
 - 🖥️ 作为本地 Electron 桌面应用运行。
 
@@ -23,9 +26,10 @@ Paper2CoreCode 是一款桌面端论文阅读与最小核心代码生成工具�
 2. 选择模型。
 3. 选择论文 PDF。
 4. 开始分析。
-5. 阅读实时流式生成的论文总结。
-6. 如果适合生成代码，模型会先规划实现论文核心贡献所需的最小文件集合。
-7. 当蓝图和文件通过本地校验后，下载生成的核心代码。
+5. 在阅读实时流式总结时查看分析状态、耗时和 token 消耗。
+6. 如有需要，可以取消并重新开始分析。
+7. 如果适合生成代码，模型会先规划实现论文核心贡献所需的最小文件集合。
+8. 当蓝图和文件通过本地校验后，下载生成的核心代码。
 
 ## 核心代码生成
 
@@ -59,9 +63,9 @@ API Key 和模型选择会按供应商分别保存在本机应用用户数据目
 
 ## CI 与发布
 
-Pull Request 会通过 GitHub Actions 在 Windows、macOS 和 Linux 上运行 `npm run build`。
+Pull Request 会通过 GitHub Actions 在 Windows、macOS 和 Linux 上进行检查。
 
-推送类似 `v0.1.3` 的版本标签时，会触发 release workflow，并为 Windows、macOS 和 Linux 构建平台安装包。
+推送类似 `v0.1.4` 的版本标签时，会触发 release workflow，并为 Windows、macOS 和 Linux 构建平台安装包。
 
 ## 技术栈 🛠️
 
@@ -80,7 +84,7 @@ Pull Request 会通过 GitHub Actions 在 Windows、macOS 和 Linux 上运行 `n
 - macOS：`.dmg` 和 `.zip`
 - Linux：`.AppImage` 和 `.deb`
 
-当推送类似 `v0.1.3` 的版本标签时，Release 产物会由 GitHub Actions 自动构建并上传。
+当推送类似 `v0.1.4` 的版本标签时，Release 产物会由 GitHub Actions 自动构建并上传。
 
 ## 开发
 

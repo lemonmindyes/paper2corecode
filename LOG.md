@@ -1,5 +1,14 @@
 # Release Log
 
+## 0.1.4
+
+- Added real-time analysis status and elapsed-time display during paper analysis.
+- Added token usage reporting when model providers return usage data.
+- Added cancellation support for in-progress analysis.
+- Added resizable sidebar, upload area, and summary area with persisted layout sizes.
+- Added Xiaomi MiMo and Kimi provider support in the model settings flow.
+- Improved analysis result handling across success, failure, and cancellation states.
+
 ## 0.1.3
 
 - Added a core-code blueprint step before generated files are cached for export.

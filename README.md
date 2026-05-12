@@ -14,6 +14,9 @@ It is designed for researchers, engineers, and students who want to quickly unde
 - 💻 Decide whether the paper needs core code.
 - 🧭 Plan a minimal core-code blueprint before writing files.
 - 📦 Export generated core code as a local project folder.
+- ⏱️ Show analysis status, elapsed time, and token usage when available.
+- 🛑 Cancel an in-progress analysis when needed.
+- ↔️ Resize the sidebar, upload area, and summary area with saved layout preferences.
 - 🌐 Switch between Chinese and English UI/output.
 - 🖥️ Run as a local Electron desktop app.
 
@@ -23,9 +26,10 @@ It is designed for researchers, engineers, and students who want to quickly unde
 2. Choose a model.
 3. Select a paper PDF.
 4. Start analysis.
-5. Read the streamed summary.
-6. If code is applicable, the model first plans the smallest file set needed for the paper's core contribution.
-7. Download generated core code if the blueprint and files pass local validation.
+5. Track analysis status, elapsed time, and token usage while reading the streamed summary.
+6. Cancel and restart analysis if needed.
+7. If code is applicable, the model first plans the smallest file set needed for the paper's core contribution.
+8. Download generated core code if the blueprint and files pass local validation.
 
 ## Core Code Generation
 
@@ -59,9 +63,9 @@ Some Jiekou GPT variants are shown as unsupported and disabled in the model sele
 
 ## CI And Release
 
-Pull requests run `npm run build` on Windows, macOS, and Linux through GitHub Actions.
+Pull requests are checked on Windows, macOS, and Linux through GitHub Actions.
 
-Version tags like `v0.1.3` trigger the release workflow, which builds platform packages for Windows, macOS, and Linux.
+Version tags like `v0.1.4` trigger the release workflow, which builds platform packages for Windows, macOS, and Linux.
 
 ## Tech Stack 🛠️
 
@@ -80,7 +84,7 @@ Prebuilt packages are published on the [GitHub Releases](https://github.com/lemo
 - macOS: `.dmg` and `.zip`
 - Linux: `.AppImage` and `.deb`
 
-Release packages are generated automatically when a version tag like `v0.1.3` is pushed.
+Release packages are generated automatically when a version tag like `v0.1.4` is pushed.
 
 ## Development
 
